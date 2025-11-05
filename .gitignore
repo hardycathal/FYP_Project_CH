@@ -1,0 +1,50 @@
+# ====================================================
+# GODOT / PYTHON PROJECT - .gitignore
+# ====================================================
+
+# ---------- GODOT ----------
+hide-and-seek/.godot/
+hide-and-seek/.import/
+hide-and-seek/export_presets.cfg
+hide-and-seek/export.cfg
+hide-and-seek/*.import
+hide-and-seek/*.tmp
+
+# Godot editor cache / backups
+*.translation
+*.import
+*.godot/tmp/
+*.godot/asset_cache/
+
+# ---------- PYTHON ----------
+Python/__pycache__/
+Python/venv/
+Python/*.pyc
+Python/*.pyo
+Python/.ipynb_checkpoints/
+
+# Python build / log / cache
+*.log
+*.egg-info/
+*.egg
+*.pkl
+*.npy
+*.pt
+*.h5
+
+# ---------- ENVIRONMENT / OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- IDE / EDITOR ----------
+.vscode/
+.idea/
+*.code-workspace
+
+# ---------- MISC ----------
+# Temporary data, model outputs, etc.
+outputs/
+checkpoints/
+runs/
+logs/
