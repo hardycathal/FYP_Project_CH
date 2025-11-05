@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://cnw0y7nnhbi71"]
+[gd_scene load_steps=16 format=3 uid="uid://cnw0y7nnhbi71"]
 
 [ext_resource type="Texture2D" uid="uid://ce5i2oigk6yth" path="res://assets/textures/dev/grids/Dark/texture_07.png" id="1_0wfyh"]
 [ext_resource type="Script" uid="uid://bxr0acubbe6uu" path="res://scripts/stage.gd" id="1_tbgi4"]
@@ -7,6 +7,10 @@
 [ext_resource type="Script" uid="uid://6wwxyjl0yake" path="res://scripts/label.gd" id="4_jyhfs"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
+albedo_texture = ExtResource("1_0wfyh")
+uv1_triplanar = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tbgi4"]
 albedo_texture = ExtResource("1_0wfyh")
 uv1_triplanar = true
 
@@ -30,12 +34,16 @@ albedo_color = Color(0.9797968, 0.25714523, 0.99999946, 1)
 lightmap_size_hint = Vector2i(17, 14)
 material = SubResource("StandardMaterial3D_tefeu")
 
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_tbgi4"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tefeu"]
+
 [node name="world" type="Node3D"]
 
 [node name="stage" type="Node3D" parent="."]
 script = ExtResource("1_tbgi4")
 
-[node name="CSGBox3D" type="CSGBox3D" parent="stage"]
+[node name="floor" type="CSGBox3D" parent="stage"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 use_collision = true
 size = Vector3(20, 1, 20)
@@ -43,6 +51,66 @@ material = SubResource("StandardMaterial3D_jyhfs")
 
 [node name="stageCam" type="Camera3D" parent="stage"]
 transform = Transform3D(1, 0, 0, 0, 0.90630776, 0.42261827, 0, -0.42261827, 0.90630776, -0.71650505, 17.930643, 20.134502)
+
+[node name="CSGBox3D" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.5, 0.988, -4.988)
+use_collision = true
+size = Vector3(1, 2, 10)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -7.976)
+use_collision = true
+size = Vector3(1, 2, 4)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D3" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -2)
+use_collision = true
+size = Vector3(1, 2, 4)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D4" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D5" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D6" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D7" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D8" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D9" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1, -0.5)
+use_collision = true
+size = Vector3(1, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
+
+[node name="CSGBox3D10" type="CSGBox3D" parent="stage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, -9.5)
+use_collision = true
+size = Vector3(8, 2, 1)
+material = SubResource("StandardMaterial3D_tbgi4")
 
 [node name="env" type="Node3D" parent="."]
 
@@ -54,6 +122,7 @@ transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545
 shadow_enabled = true
 
 [node name="player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5)
 script = ExtResource("3_sugp2")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="player"]
@@ -72,3 +141,32 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 offset_right = 40.0
 offset_bottom = 23.0
 script = ExtResource("4_jyhfs")
+
+[node name="props" type="Node3D" parent="."]
+
+[node name="CSGBox3D" type="CSGBox3D" parent="props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1, 6)
+use_collision = true
+size = Vector3(2, 2, 2)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1, -1.9190903)
+use_collision = true
+size = Vector3(2, 2, 2)
+
+[node name="rampBody" type="RigidBody3D" parent="props"]
+axis_lock_linear_x = true
+axis_lock_linear_z = true
+mass = 20.0
+physics_material_override = SubResource("PhysicsMaterial_tbgi4")
+sleeping = true
+continuous_cd = true
+linear_damp = 0.05
+angular_damp = 0.05
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="props/rampBody"]
+shape = SubResource("BoxShape3D_tefeu")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="props/rampBody/CollisionShape3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1, 0)
+use_collision = true
