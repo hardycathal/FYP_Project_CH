@@ -1,8 +1,8 @@
-[gd_scene load_steps=14 format=3 uid="uid://cnw0y7nnhbi71"]
+[gd_scene load_steps=17 format=3 uid="uid://cnw0y7nnhbi71"]
 
-[ext_resource type="Texture2D" uid="uid://ce5i2oigk6yth" path="res://assets/textures/dev/grids/Dark/texture_07.png" id="1_0wfyh"]
+[ext_resource type="Texture2D" uid="uid://601e4cgi824x" path="res://assets/textures/dev/grids/Dark/texture_07.png" id="1_0wfyh"]
 [ext_resource type="Script" uid="uid://bxr0acubbe6uu" path="res://scripts/stage.gd" id="1_tbgi4"]
-[ext_resource type="Texture2D" uid="uid://c18yqew6y18gr" path="res://assets/hdris/kloofendal_48d_partly_cloudy_puresky_2k.hdr" id="2_sugp2"]
+[ext_resource type="Texture2D" uid="uid://dyfcbdxlb6aot" path="res://assets/hdris/kloofendal_48d_partly_cloudy_puresky_2k.hdr" id="2_sugp2"]
 [ext_resource type="Script" uid="uid://bajg7d42sp0fa" path="res://scripts/player.gd" id="3_sugp2"]
 [ext_resource type="Script" uid="uid://6wwxyjl0yake" path="res://scripts/label.gd" id="4_jyhfs"]
 
@@ -33,6 +33,12 @@ albedo_color = Color(0.9797968, 0.25714523, 0.99999946, 1)
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_o6xl0"]
 lightmap_size_hint = Vector2i(17, 14)
 material = SubResource("StandardMaterial3D_tefeu")
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_tbgi4"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_tefeu"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_o6xl0"]
 
 [node name="world" type="Node3D"]
 
@@ -140,12 +146,19 @@ script = ExtResource("4_jyhfs")
 
 [node name="props" type="Node3D" parent="."]
 
-[node name="CSGBox3D" type="CSGBox3D" parent="props"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1, 6)
-use_collision = true
-size = Vector3(2, 2, 2)
+[node name="RigidBody3D" type="RigidBody3D" parent="props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.7670048, 1.3322694, 0)
+collision_layer = 2
+axis_lock_angular_x = true
+axis_lock_angular_z = true
+mass = 3.0
+physics_material_override = SubResource("PhysicsMaterial_tbgi4")
+continuous_cd = true
+linear_damp = 0.05
+angular_damp = 0.05
 
-[node name="CSGBox3D2" type="CSGBox3D" parent="props"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1, -1.9190903)
-use_collision = true
-size = Vector3(2, 2, 2)
+[node name="MeshInstance3D" type="MeshInstance3D" parent="props/RigidBody3D"]
+mesh = SubResource("BoxMesh_tefeu")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="props/RigidBody3D"]
+shape = SubResource("BoxShape3D_o6xl0")
