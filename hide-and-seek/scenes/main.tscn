@@ -1,16 +1,140 @@
 [gd_scene load_steps=17 format=3 uid="uid://cnw0y7nnhbi71"]
 
-[ext_resource type="Texture2D" uid="uid://601e4cgi824x" path="res://assets/textures/dev/grids/Dark/texture_07.png" id="1_0wfyh"]
+[ext_resource type="Texture2D" uid="uid://ce5i2oigk6yth" path="res://assets/textures/dev/grids/Dark/texture_07.png" id="1_0wfyh"]
 [ext_resource type="Script" uid="uid://bxr0acubbe6uu" path="res://scripts/stage.gd" id="1_tbgi4"]
-[ext_resource type="Texture2D" uid="uid://dyfcbdxlb6aot" path="res://assets/hdris/kloofendal_48d_partly_cloudy_puresky_2k.hdr" id="2_sugp2"]
+[ext_resource type="Texture2D" uid="uid://c18yqew6y18gr" path="res://assets/hdris/kloofendal_48d_partly_cloudy_puresky_2k.hdr" id="2_sugp2"]
 [ext_resource type="Script" uid="uid://bajg7d42sp0fa" path="res://scripts/player.gd" id="3_sugp2"]
 [ext_resource type="Script" uid="uid://6wwxyjl0yake" path="res://scripts/label.gd" id="4_jyhfs"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
-albedo_texture = ExtResource("1_0wfyh")
-uv1_triplanar = true
+[sub_resource type="GDScript" id="GDScript_tbgi4"]
+script/source = "extends Node3D
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tbgi4"]
+@export var arena_size := 20.0
+@export var wall_height := 3.0
+@export var wall_thickness := 0.5
+
+# Node3D for boxes/ramps/etc.
+@onready var props_root: Node3D = $props
+
+func _input(event):
+	if event.is_action_pressed(\"reload\"):
+		load_layout(0)
+
+
+var layouts = [
+	{
+		\"name\": \"simple_room\",
+		\"inner_walls\": [
+			{ \"pos\": Vector2(-5, 0), \"length\": 10.0, \"horizontal\": true },
+			{ \"pos\": Vector2(0, -5), \"length\": 10.0, \"horizontal\": false },
+		],
+		\"boxes\": [
+			Vector3(2, 0.5, 2),
+			Vector3(-3, 0.5, -1),
+		],
+	}
+]
+
+
+func _ready():
+	# Outer walls around floor
+	_create_outer_walls()
+	# Load first layout for now
+	load_layout(0)
+
+
+func load_layout(index: int) -> void:
+	# Clear previous props / inner walls
+	_clear_children(props_root)
+
+	var layout = layouts[index]
+
+	# Spawn inner walls
+	for w in layout[\"inner_walls\"]:
+		var pos2: Vector2 = w[\"pos\"]
+		var length: float = w[\"length\"]
+		var horizontal: bool = w[\"horizontal\"]
+		var pos3 = Vector3(pos2.x, wall_height / 2.0, pos2.y)
+		_create_inner_wall(pos3, length, horizontal)
+
+	# Spawn boxes
+	for box_pos in layout[\"boxes\"]:
+		_create_box(box_pos)
+
+
+func _clear_children(node: Node) -> void:
+	for c in node.get_children():
+		c.queue_free()
+
+
+func _create_outer_walls() -> void:
+	var half := arena_size / 2.0
+
+	var walls_data = [
+		[\"North\", Vector3(0, wall_height / 2, -half), arena_size, wall_thickness],
+		[\"South\", Vector3(0, wall_height / 2, half), arena_size, wall_thickness],
+		[\"East\",  Vector3(half, wall_height / 2, 0), wall_thickness, arena_size],
+		[\"West\",  Vector3(-half, wall_height / 2, 0), wall_thickness, arena_size],
+	]
+
+	for data in walls_data:
+		var wall_name = data[0]
+		var pos = data[1]
+		var sx = data[2]
+		var sz = data[3]
+		var wall = _create_wall(wall_name, pos, sx, sz)
+		add_child(wall)
+
+
+func _create_wall(wall_name: String, pos: Vector3, size_x: float, size_z: float) -> StaticBody3D:
+	var wall := StaticBody3D.new()
+	wall.name = \"Wall_\" + wall_name
+	wall.position = pos
+
+	var mesh_instance := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(size_x, wall_height, size_z)
+	mesh_instance.mesh = mesh
+	wall.add_child(mesh_instance)
+
+	var collider := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(size_x, wall_height, size_z)
+	collider.shape = shape
+	wall.add_child(collider)
+
+	return wall
+
+
+func _create_inner_wall(pos: Vector3, length: float, horizontal: bool) -> void:
+	var size_x := length if horizontal else wall_thickness
+	var size_z := wall_thickness if horizontal else length
+	var wall = _create_wall(\"Inner\", pos, size_x, size_z)
+	add_child(wall)
+
+
+func _create_box(pos: Vector3) -> void:
+	var box_body := RigidBody3D.new()
+	box_body.name = \"Box\"
+	box_body.position = pos
+	box_body.mass = 15.0
+
+	var mesh_instance := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(1, 1, 1)
+	mesh_instance.mesh = mesh
+	box_body.add_child(mesh_instance)
+
+	var collider := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(1, 1, 1)
+	collider.shape = shape
+	box_body.add_child(collider)
+
+	props_root.add_child(box_body)
+"
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
 albedo_texture = ExtResource("1_0wfyh")
 uv1_triplanar = true
 
@@ -41,6 +165,7 @@ material = SubResource("StandardMaterial3D_tefeu")
 [sub_resource type="BoxShape3D" id="BoxShape3D_o6xl0"]
 
 [node name="world" type="Node3D"]
+script = SubResource("GDScript_tbgi4")
 
 [node name="stage" type="Node3D" parent="."]
 script = ExtResource("1_tbgi4")
@@ -53,66 +178,6 @@ material = SubResource("StandardMaterial3D_jyhfs")
 
 [node name="stageCam" type="Camera3D" parent="stage"]
 transform = Transform3D(1, 0, 0, 0, 0.90630776, 0.42261827, 0, -0.42261827, 0.90630776, -0.71650505, 17.930643, 20.134502)
-
-[node name="CSGBox3D" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.5, 0.988, -4.988)
-use_collision = true
-size = Vector3(1, 2, 10)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D2" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -7.976)
-use_collision = true
-size = Vector3(1, 2, 4)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D3" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1, -2)
-use_collision = true
-size = Vector3(1, 2, 4)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D4" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D5" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D6" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D7" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D8" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D9" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1, -0.5)
-use_collision = true
-size = Vector3(1, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
-
-[node name="CSGBox3D10" type="CSGBox3D" parent="stage"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, -9.5)
-use_collision = true
-size = Vector3(8, 2, 1)
-material = SubResource("StandardMaterial3D_tbgi4")
 
 [node name="env" type="Node3D" parent="."]
 
@@ -162,3 +227,4 @@ mesh = SubResource("BoxMesh_tefeu")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="props/RigidBody3D"]
 shape = SubResource("BoxShape3D_o6xl0")
+debug_color = Color(0.7559128, 0.40162125, 0.5731383, 0.41960785)
