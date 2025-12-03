@@ -123,12 +123,11 @@ func _create_inner_wall(pos: Vector3, length: float, horizontal: bool) -> void:
 
 func _spawn_player() -> void:
 	player = seekerScene.instantiate()
-	
-	# SpawnPoint
-	player.global_transform.origin = Vector3(0, 1, 0)
-
+	player.position = Vector3(0, 1, 0)
 	add_child(player)
+
 	player_cam = player.get_node(\"head/Camera3D\")
+
 
 func _create_box(pos: Vector3) -> void:
 	var box := boxScene.instantiate()
