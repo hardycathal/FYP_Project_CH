@@ -15,6 +15,7 @@ script/source = "extends Node3D
 
 # Node3D for boxes/ramps/etc.
 @onready var props_root: Node3D = $props
+const boxScene := preload(\"res://scenes/box.tscn\")
 
 func _input(event):
 	if event.is_action_pressed(\"reload\"):
@@ -25,7 +26,11 @@ var layouts = [
 	{
 		\"name\": \"simple_room\",
 		\"inner_walls\": [
-			{ \"pos\": Vector2(-5, 0), \"length\": 10.0, \"horizontal\": true },
+			# Horizontal wall with a door gap in the middle
+			{ \"pos\": Vector2(-7, 0), \"length\": 6.0, \"horizontal\": true },  # left segment
+			{ \"pos\": Vector2(-1, 0), \"length\": 2.0, \"horizontal\": true },  # right segment
+
+			# Vertical wall like you had before
 			{ \"pos\": Vector2(0, -5), \"length\": 10.0, \"horizontal\": false },
 		],
 		\"boxes\": [
@@ -36,6 +41,7 @@ var layouts = [
 ]
 
 
+
 func _ready():
 	# Outer walls around floor
 	_create_outer_walls()
@@ -44,8 +50,6 @@ func _ready():
 
 
 func load_layout(index: int) -> void:
-	# Clear previous props / inner walls
-	_clear_children(props_root)
 
 	var layout = layouts[index]
 
@@ -60,11 +64,6 @@ func load_layout(index: int) -> void:
 	# Spawn boxes
 	for box_pos in layout[\"boxes\"]:
 		_create_box(box_pos)
-
-
-func _clear_children(node: Node) -> void:
-	for c in node.get_children():
-		c.queue_free()
 
 
 func _create_outer_walls() -> void:
@@ -114,24 +113,18 @@ func _create_inner_wall(pos: Vector3, length: float, horizontal: bool) -> void:
 
 
 func _create_box(pos: Vector3) -> void:
-	var box_body := RigidBody3D.new()
-	box_body.name = \"Box\"
-	box_body.position = pos
-	box_body.mass = 15.0
+	var box := boxScene.instantiate()
+	box.position = pos
 
-	var mesh_instance := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(1, 1, 1)
-	mesh_instance.mesh = mesh
-	box_body.add_child(mesh_instance)
+	# Resize mesh
+	var mesh_instance := box.get_node(\"MeshInstance3D\")
+	mesh_instance.mesh.size = Vector3(2, 2, 2)
 
-	var collider := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(1, 1, 1)
-	collider.shape = shape
-	box_body.add_child(collider)
+	# Resize collision
+	var collider := box.get_node(\"CollisionShape3D\")
+	collider.shape.size = Vector3(2, 2, 2)
 
-	props_root.add_child(box_body)
+	props_root.add_child(box)
 "
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
@@ -213,6 +206,7 @@ script = ExtResource("4_jyhfs")
 
 [node name="RigidBody3D" type="RigidBody3D" parent="props"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.7670048, 1.3322694, 0)
+visible = false
 collision_layer = 2
 axis_lock_angular_x = true
 axis_lock_angular_z = true

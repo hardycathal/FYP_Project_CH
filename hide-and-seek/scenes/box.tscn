@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3 uid="uid://dn1qipoc7wsfx"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_on5l8"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_3inec"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ks2v0"]
+
+[node name="RigidBody3D" type="RigidBody3D"]
+collision_layer = 2
+collision_mask = 3
+axis_lock_angular_x = true
+axis_lock_angular_z = true
+mass = 211.759
+physics_material_override = SubResource("PhysicsMaterial_on5l8")
+gravity_scale = 1.172
+continuous_cd = true
+linear_damp = 4.095
+angular_damp = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_3inec")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_ks2v0")
+debug_color = Color(0.7559128, 0.40162125, 0.5731383, 0.41960785)
