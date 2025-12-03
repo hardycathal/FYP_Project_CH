@@ -71,9 +71,8 @@ func load_layout(index: int) -> void:
 		_create_inner_wall(pos3, length, horizontal)
 
 	# Spawn boxes
-	for box_pos in layout[\"boxes\"]:
-		_create_box(box_pos)
-	
+	for i in range(layout[\"boxes\"].size()):
+		_create_box(layout[\"boxes\"][i], i + 1)
 
 
 func _create_outer_walls() -> void:
@@ -129,8 +128,9 @@ func _spawn_player() -> void:
 	player_cam = player.get_node(\"head/Camera3D\")
 
 
-func _create_box(pos: Vector3) -> void:
+func _create_box(pos: Vector3, idx: int) -> void:
 	var box := boxScene.instantiate()
+	box.name = 'Box' + str(idx)
 	box.position = pos
 
 	# Resize mesh
