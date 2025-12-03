@@ -5,7 +5,7 @@
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_yflg5"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tefeu"]
-albedo_color = Color(0.49684072, 0.6719772, 0.7601015, 1)
+albedo_color = Color(0.2803487, 0.74676687, 0.46097195, 1)
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_51c7v"]
 lightmap_size_hint = Vector2i(17, 14)
