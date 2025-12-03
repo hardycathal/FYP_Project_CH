@@ -3,8 +3,13 @@ extends CharacterBody3D
 @export var move_speed := 5.0        # forward speed (m/s)
 @export var turn_speed := 2.5        # yaw turn speed (rad/s)
 @export var accel := 20.0            # accel for smoothing X/Z
+@onready var ray_cast_3d: RayCast3D = $head/RayCast3D
 
 func _physics_process(delta: float) -> void:
+	ray_cast_3d.force_raycast_update()
+	if ray_cast_3d.is_colliding():
+		var collider = ray_cast_3d.get_collider()
+		print(collider)
 	# Apply gravity if not grounded
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -27,5 +32,5 @@ func _physics_process(delta: float) -> void:
 	# Smooth velocity toward desired velocity
 	velocity.x = move_toward(velocity.x, desired_vel.x, accel * delta)
 	velocity.z = move_toward(velocity.z, desired_vel.z, accel * delta)
-
+	
 	move_and_slide()
