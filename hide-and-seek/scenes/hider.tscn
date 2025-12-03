@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://l2hku1y0jfc8"]
+
+[ext_resource type="Script" uid="uid://bajg7d42sp0fa" path="res://scripts/player.gd" id="1_6w4v8"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_yflg5"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tefeu"]
+albedo_color = Color(0.49684072, 0.6719772, 0.7601015, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_51c7v"]
+lightmap_size_hint = Vector2i(17, 14)
+material = SubResource("StandardMaterial3D_tefeu")
+
+[node name="hider" type="CharacterBody3D"]
+script = ExtResource("1_6w4v8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_yflg5")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CollisionShape3D"]
+mesh = SubResource("CapsuleMesh_51c7v")
+
+[node name="head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+
+[node name="Camera3D" type="Camera3D" parent="head"]
