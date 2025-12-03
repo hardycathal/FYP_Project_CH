@@ -22,12 +22,12 @@ func _physics_process(delta: float) -> void:
 
 	# --- MOVEMENT: W/S move forward/backward along local forward ---
 	var desired_vel := Vector3.ZERO
-	var forward := -transform.basis.z  # Godot’s forward direction is -Z
+	var forward := -transform.basis.z
 
 	if Input.is_action_pressed("forward"):
 		desired_vel = forward * move_speed
 	elif Input.is_action_pressed("backward"):
-		desired_vel = -forward * move_speed   # move backward
+		desired_vel = -forward * move_speed
 
 	# Smooth velocity toward desired velocity
 	velocity.x = move_toward(velocity.x, desired_vel.x, accel * delta)

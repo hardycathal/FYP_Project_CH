@@ -6,7 +6,7 @@
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ks2v0"]
 
-[node name="RigidBody3D" type="RigidBody3D"]
+[node name="Box" type="RigidBody3D"]
 collision_layer = 2
 collision_mask = 3
 axis_lock_angular_x = true
