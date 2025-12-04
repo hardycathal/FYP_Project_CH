@@ -13,11 +13,11 @@ func _ready() -> void:
 	createRays()
 
 func _physics_process(delta: float) -> void:
-	for r in rays:
-		r.force_raycast_update()
-		if r.is_colliding():
-			var collider := r.get_collider()
-			print("HiderHit:", collider)
+	#for r in rays:
+		#r.force_raycast_update()
+		#if r.is_colliding():
+			#var collider := r.get_collider()
+			#print("HiderHit:", collider)
 	
 	
 	if not is_on_floor():
@@ -46,7 +46,7 @@ func _physics_process(delta: float) -> void:
 
 func createRays() -> void:
 	var num_rays: int = 16
-	var spread_deg: float = 90.0
+	var spread_deg: float = 360
 	var half_spread: float = deg_to_rad(spread_deg / 2.0)
 
 	for i in range(num_rays):
