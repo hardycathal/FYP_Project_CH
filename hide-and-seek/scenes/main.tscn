@@ -15,11 +15,12 @@ var player_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
 var use_player_cam := true
 
-
-
 const boxScene := preload(\"res://scenes/box.tscn\")
+const hiderScene := preload(\"res://scenes/hider.tscn\")
 const seekerScene := preload(\"res://scenes/seeker.tscn\")
-var seekerPos := Vector3(0,3,0)
+var hider: CharacterBody3D
+var seekerPos := Vector3(0,1,0)
+var hiderPos := Vector3(-5,1,-5)
 var player: CharacterBody3D
 func _input(event):
 	if event.is_action_pressed(\"reload\"):
@@ -124,6 +125,10 @@ func _spawn_player() -> void:
 	player = seekerScene.instantiate()
 	player.position = Vector3(0, 1, 0)
 	add_child(player)
+	
+	hider = hiderScene.instantiate()
+	hider.position = hiderPos
+	add_child(hider)
 
 	player_cam = player.get_node(\"head/Camera3D\")
 
