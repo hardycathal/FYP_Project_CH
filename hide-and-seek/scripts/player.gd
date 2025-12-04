@@ -13,11 +13,11 @@ func _ready() -> void:
 	createRays()
 
 func _physics_process(delta: float) -> void:
-	for r in rays:
-		r.force_raycast_update()
-		if r.is_colliding():
-			var collider := r.get_collider()
-			print("Hit:", collider)
+	#for r in rays:
+		#r.force_raycast_update()
+		#if r.is_colliding():
+			#var collider := r.get_collider()
+			#print("Hit:", collider)
 	
 	
 	if not is_on_floor():

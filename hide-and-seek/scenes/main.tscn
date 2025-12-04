@@ -12,8 +12,8 @@ script/source = "extends Node3D
 @export var wall_height := 3.0
 @export var wall_thickness := 0.5
 var player_cam: Camera3D
+var hider_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
-var use_player_cam := true
 
 const boxScene := preload(\"res://scenes/box.tscn\")
 const hiderScene := preload(\"res://scenes/hider.tscn\")
@@ -25,15 +25,20 @@ var player: CharacterBody3D
 func _input(event):
 	if event.is_action_pressed(\"reload\"):
 		load_layout(0)
-	if event.is_action_pressed(\"switch_cam\"):
-		use_player_cam = !use_player_cam
-
-		if use_player_cam:
-			player_cam.current = true
-			stage_cam.current = false
-		else:
-			stage_cam.current = true
-			player_cam.current = false
+	if event.is_action_pressed(\"hider_cam\"):
+		stage_cam.current = false
+		player_cam.current = false
+		hider_cam.current = true
+		
+	if event.is_action_pressed(\"player_cam\"):
+		stage_cam.current = false
+		player_cam.current = true
+		hider_cam.current = false
+	
+	if event.is_action_pressed(\"stage_cam\"):
+		stage_cam.current = true
+		player_cam.current = false
+		hider_cam.current = false
 
 var layouts = [
 	{
@@ -54,9 +59,11 @@ var layouts = [
 
 func _ready():
 	# Outer walls
+	
 	_create_outer_walls()
 	load_layout(0)
 	_spawn_player()
+	stage_cam.current = true
 
 
 func load_layout(index: int) -> void:
@@ -129,6 +136,7 @@ func _spawn_player() -> void:
 	hider = hiderScene.instantiate()
 	hider.position = hiderPos
 	add_child(hider)
+	hider_cam = hider.get_node(\"head/Camera3D\")
 
 	player_cam = player.get_node(\"head/Camera3D\")
 
@@ -147,10 +155,6 @@ func _create_box(pos: Vector3, idx: int) -> void:
 	collider.shape.size = Vector3(2, 2, 2)
 
 	add_child(box)
-func _set_initial_cameras() -> void:
-	use_player_cam = true
-	player_cam.current = true
-	stage_cam.current = false
 "
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
