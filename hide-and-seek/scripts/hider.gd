@@ -4,10 +4,17 @@ extends CharacterBody3D
 @export var turn_speed := 2.5 #rad/s
 @export var accel := 20.0          
 @onready var camera_3d: Camera3D = $head/Camera3D
+var spotted_by_seeker: bool = false
+var seeker_pos: Vector3 = Vector3.ZERO
+@export var move_towards_speed_factor := 1.5
 
 const rayScene = preload("res://scenes/raycast.tscn")
 var ray: RayCast3D
 var rays: Array[RayCast3D] = []
+
+func set_spotted(pos: Vector3) -> void:
+	spotted_by_seeker = true
+	seeker_pos = pos
 
 func _ready() -> void:
 	createRays()
@@ -18,26 +25,33 @@ func _physics_process(delta: float) -> void:
 		#if r.is_colliding():
 			#var collider := r.get_collider()
 			#print("HiderHit:", collider)
+	var current_move_speed = move_speed
+	var forward := -transform.basis.z
+	var desired_vel := Vector3.ZERO
 	
+	if spotted_by_seeker:
+		current_move_speed *= move_towards_speed_factor
+		
+		var direction = (seeker_pos - global_position).normalized()
+		
+		desired_vel = direction * current_move_speed
+		look_at(seeker_pos, Vector3.UP)
+	else:
+			# --- ROTATION: A/D turn left/right ---
+		if Input.is_action_pressed("arrow_left"):
+			rotate_y(turn_speed * delta)
+		elif Input.is_action_pressed("arrow_right"):
+			rotate_y(-turn_speed * delta)
+
+		# --- MOVEMENT: W/S move forward/backward along local forward ---
+		if Input.is_action_pressed("arrow_up"):
+			desired_vel = forward * move_speed
+		elif Input.is_action_pressed("arrow_down"):
+			desired_vel = -forward * move_speed
 	
 	if not is_on_floor():
 		velocity += get_gravity() * delta
-
-	# --- ROTATION: A/D turn left/right ---
-	if Input.is_action_pressed("arrow_left"):
-		rotate_y(turn_speed * delta)
-	elif Input.is_action_pressed("arrow_right"):
-		rotate_y(-turn_speed * delta)
-
-	# --- MOVEMENT: W/S move forward/backward along local forward ---
-	var desired_vel := Vector3.ZERO
-	var forward := -transform.basis.z
-
-	if Input.is_action_pressed("arrow_up"):
-		desired_vel = forward * move_speed
-	elif Input.is_action_pressed("arrow_down"):
-		desired_vel = -forward * move_speed
-
+		
 	# Smooth velocity toward desired velocity
 	velocity.x = move_toward(velocity.x, desired_vel.x, accel * delta)
 	velocity.z = move_toward(velocity.z, desired_vel.z, accel * delta)

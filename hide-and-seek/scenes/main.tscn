@@ -131,11 +131,13 @@ func _create_inner_wall(pos: Vector3, length: float, horizontal: bool) -> void:
 func _spawn_player() -> void:
 	player = seekerScene.instantiate()
 	player.position = Vector3(0, 1, 0)
+	
 	add_child(player)
 	
 	hider = hiderScene.instantiate()
 	hider.position = hiderPos
 	add_child(hider)
+	player.hider_ref = hider
 	hider_cam = hider.get_node(\"head/Camera3D\")
 
 	player_cam = player.get_node(\"head/Camera3D\")
