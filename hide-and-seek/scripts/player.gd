@@ -4,7 +4,7 @@ extends CharacterBody3D
 @export var turn_speed := 2.5 #rad/s
 @export var accel := 20.0          
 @onready var camera_3d: Camera3D = $head/Camera3D
-
+@export var hider_ref: CharacterBody3D
 const rayScene = preload("res://scenes/raycast.tscn")
 var ray: RayCast3D
 var rays: Array[RayCast3D] = []
@@ -13,11 +13,15 @@ func _ready() -> void:
 	createRays()
 
 func _physics_process(delta: float) -> void:
-	#for r in rays:
-		#r.force_raycast_update()
-		#if r.is_colliding():
-			#var collider := r.get_collider()
-			#print("Hit:", collider)
+	var hider_spotted = false
+	for r in rays:
+		r.force_raycast_update()
+		if r.is_colliding():
+			var collider := r.get_collider()
+			if collider == hider_ref:
+				hider_ref.set_spotted(global_position)
+				hider_spotted = true
+				break
 	
 	
 	if not is_on_floor():
