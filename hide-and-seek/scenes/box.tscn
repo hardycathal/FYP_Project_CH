@@ -1,6 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://dn1qipoc7wsfx"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_on5l8"]
+friction = 0.2
+bounce = 0.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_3inec"]
 
@@ -11,12 +13,12 @@ collision_layer = 2
 collision_mask = 15
 axis_lock_angular_x = true
 axis_lock_angular_z = true
-mass = 211.759
+mass = 0.362
 physics_material_override = SubResource("PhysicsMaterial_on5l8")
 gravity_scale = 1.172
 continuous_cd = true
-linear_damp = 4.095
-angular_damp = 3.0
+linear_damp = 0.2
+angular_damp = 0.2
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_3inec")
