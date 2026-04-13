@@ -22,11 +22,27 @@ class GodotEnv:
             self.sock.close()
             self.sock = None
 
-    def reset(self) -> dict[str, Any]:
+    def reset(self) -> tuple[list[float], dict[str, Any]]:
         self._send_command({"cmd": "reset"})
-        return self.step(self.ACTION_IDLE)
+        response = self._send_command({"cmd": "step", "action": self.ACTION_IDLE})
+        result = self._unwrap_response(response)
+        return list(result["observation"]), dict(result["info"])
 
-    def step(self, action: int) -> dict[str, Any]:
+    def step(self, action: int) -> tuple[list[float], float, bool, dict[str, Any]]:
+        response = self._send_command({"cmd": "step", "action": int(action)})
+        result = self._unwrap_response(response)
+        return (
+            list(result["observation"]),
+            float(result["reward"]),
+            bool(result["done"]),
+            dict(result["info"]),
+        )
+
+    def reset_raw(self) -> dict[str, Any]:
+        self._send_command({"cmd": "reset"})
+        return self._send_command({"cmd": "step", "action": self.ACTION_IDLE})
+
+    def step_raw(self, action: int) -> dict[str, Any]:
         return self._send_command({"cmd": "step", "action": int(action)})
 
     def _send_command(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -47,6 +63,14 @@ class GodotEnv:
             newline = data.find(b"\n")
             if newline != -1:
                 return data[:newline].decode("utf-8")
+
+    def _unwrap_response(self, response: dict[str, Any]) -> dict[str, Any]:
+        if not response.get("ok", False):
+            raise RuntimeError(f"Bridge command failed: {response}")
+        result = response.get("result")
+        if not isinstance(result, dict):
+            raise RuntimeError(f"Bridge response missing result payload: {response}")
+        return result
 
     def __enter__(self) -> "GodotEnv":
         self.connect()
