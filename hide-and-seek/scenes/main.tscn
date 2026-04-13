@@ -18,6 +18,7 @@ var hider_cam: Camera3D
 const boxScene := preload(\"res://scenes/box.tscn\")
 const hiderScene := preload(\"res://scenes/hider.tscn\")
 const seekerScene := preload(\"res://scenes/seeker.tscn\")
+const SLOT_GROUP := \"block_slot\"
 var hider: CharacterBody3D
 var seekerPos := Vector3(0,1,0)
 var hiderPos := Vector3(-5,1,-5)
@@ -52,6 +53,9 @@ var layouts = [
 			Vector3(2, 0.5, 2),
 			Vector3(-3, 0.5, -1),
 		],
+		\"block_slots\": [
+			{ \"pos\": Vector3(-3, 1.0, 0), \"size\": Vector3(3.0, 2.4, 1.5), \"yaw\": 0.0 },
+		],
 	}
 ]
 
@@ -81,6 +85,10 @@ func load_layout(index: int) -> void:
 	# Spawn boxes
 	for i in range(layout[\"boxes\"].size()):
 		_create_box(layout[\"boxes\"][i], i + 1)
+
+	# Spawn blocker slots
+	for slot_data in layout.get(\"block_slots\", []):
+		_create_block_slot(slot_data[\"pos\"], slot_data[\"size\"], slot_data[\"yaw\"])
 
 
 func _create_outer_walls() -> void:
@@ -146,7 +154,6 @@ func _spawn_player() -> void:
 func _create_box(pos: Vector3, idx: int) -> void:
 	var box := boxScene.instantiate()
 	box.name = 'Box' + str(idx)
-	box.position = pos
 
 	# Resize mesh
 	var mesh_instance := box.get_node(\"MeshInstance3D\")
@@ -156,7 +163,27 @@ func _create_box(pos: Vector3, idx: int) -> void:
 	var collider := box.get_node(\"CollisionShape3D\")
 	collider.shape.size = Vector3(2, 2, 2)
 
+	# Keep the resized box sitting on top of the floor instead of intersecting it.
+	box.position = Vector3(pos.x, collider.shape.size.y / 2.0, pos.z)
+
 	add_child(box)
+
+func _create_block_slot(pos: Vector3, size: Vector3, yaw: float) -> void:
+	var slot := Area3D.new()
+	slot.name = \"BlockSlot\"
+	slot.position = pos
+	slot.rotation.y = yaw
+	slot.add_to_group(SLOT_GROUP)
+	slot.set_meta(\"snap_position\", pos)
+	slot.set_meta(\"snap_yaw\", yaw)
+
+	var collider := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	collider.shape = shape
+	slot.add_child(collider)
+
+	add_child(slot)
 "
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jyhfs"]
