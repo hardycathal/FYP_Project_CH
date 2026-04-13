@@ -218,3 +218,12 @@ func _try_snap_to_block_slot(box: RigidBody3D) -> bool:
 	box.linear_velocity = Vector3.ZERO
 	box.angular_velocity = Vector3.ZERO
 	return true
+
+func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
+	if carried_box:
+		_release_box()
+	spotted_by_seeker = false
+	seeker_pos = Vector3.ZERO
+	velocity = Vector3.ZERO
+	global_position = position
+	rotation = Vector3(0.0, yaw, 0.0)
