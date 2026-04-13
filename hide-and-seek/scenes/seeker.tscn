@@ -12,6 +12,8 @@ lightmap_size_hint = Vector2i(17, 14)
 material = SubResource("StandardMaterial3D_tefeu")
 
 [node name="seeker" type="CharacterBody3D"]
+collision_layer = 9
+collision_mask = 7
 script = ExtResource("1_sxpof")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
