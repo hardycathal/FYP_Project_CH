@@ -9,6 +9,8 @@ extends Node3D
 @export var step_penalty := -0.01
 @export var debug_step_logging := true
 @export var action_repeat := 5
+@export var bridge_enabled := true
+@export var bridge_port := 19000
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -31,6 +33,10 @@ var box_spawn_positions: Array[Vector3] = []
 
 var episode_step := 0
 var episode_active := false
+var bridge_server := TCPServer.new()
+var bridge_client: StreamPeerTCP
+var bridge_buffer := ""
+var bridge_busy := false
 
 var layouts = [
 	{
@@ -55,15 +61,17 @@ func _ready() -> void:
 	load_layout(0)
 	_spawn_player()
 	stage_cam.current = true
-	reset_episode()
+	_reset_state()
+	_start_bridge_server()
+
+func _process(_delta: float) -> void:
+	_poll_bridge_server()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"):
-		reset_episode()
+		_reset_state()
 	if event.is_action_pressed("debug_reset"):
-		var reset_data := reset_episode()
-		if debug_step_logging:
-			_log_step_result("reset", reset_data)
+		_run_debug_reset()
 	if event.is_action_pressed("debug_step"):
 		_run_debug_step()
 	if event.is_action_pressed("hider_cam"):
@@ -196,7 +204,7 @@ func _create_block_slot(pos: Vector3, size: Vector3, yaw: float) -> void:
 	add_child(slot)
 	layout_nodes.append(slot)
 
-func reset_episode() -> Dictionary:
+func _reset_state() -> void:
 	episode_step = 0
 	episode_active = true
 
@@ -218,6 +226,27 @@ func reset_episode() -> Dictionary:
 		box.global_position = box_spawn_positions[i]
 		box.rotation = Vector3.ZERO
 
+func reset_episode() -> Dictionary:
+	_reset_state()
+	return {
+		"observation": player.get_observation() if player else [],
+		"reward": 0.0,
+		"done": false,
+		"info": {
+			"episode_step": episode_step,
+			"in_preparation": true,
+		},
+	}
+
+func reset_episode_async() -> Dictionary:
+	_reset_state()
+	if player:
+		player.force_update_transform()
+	if hider:
+		hider.force_update_transform()
+	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	return {
 		"observation": player.get_observation() if player else [],
 		"reward": 0.0,
@@ -230,7 +259,7 @@ func reset_episode() -> Dictionary:
 
 func step(action: int) -> Dictionary:
 	if not episode_active:
-		reset_episode()
+		_reset_state()
 
 	if player:
 		if episode_step < preparation_steps:
@@ -272,11 +301,104 @@ func step(action: int) -> Dictionary:
 		},
 	}
 
+func _start_bridge_server() -> void:
+	if not bridge_enabled:
+		return
+	var err := bridge_server.listen(bridge_port)
+	if err == OK:
+		print("[BRIDGE] Listening on port %d" % bridge_port)
+	else:
+		push_warning("Bridge server failed to listen on port %d (error %d)" % [bridge_port, err])
+
+func _poll_bridge_server() -> void:
+	if not bridge_enabled or not bridge_server.is_listening():
+		return
+
+	if bridge_client == null and bridge_server.is_connection_available():
+		bridge_client = bridge_server.take_connection()
+		bridge_buffer = ""
+		bridge_busy = false
+		print("[BRIDGE] Client connected")
+
+	if bridge_client == null:
+		return
+
+	bridge_client.poll()
+	var status := bridge_client.get_status()
+	if status == StreamPeerTCP.STATUS_NONE or status == StreamPeerTCP.STATUS_ERROR:
+		print("[BRIDGE] Client disconnected")
+		bridge_client = null
+		bridge_buffer = ""
+		bridge_busy = false
+		return
+
+	if bridge_busy:
+		return
+
+	var available := bridge_client.get_available_bytes()
+	if available <= 0:
+		return
+
+	bridge_buffer += bridge_client.get_utf8_string(available)
+	while bridge_buffer.contains("\n") and not bridge_busy:
+		var newline_index := bridge_buffer.find("\n")
+		var raw_line := bridge_buffer.substr(0, newline_index).strip_edges()
+		bridge_buffer = bridge_buffer.substr(newline_index + 1)
+		if raw_line.is_empty():
+			continue
+		_handle_bridge_line(raw_line)
+
+func _handle_bridge_line(raw_line: String) -> void:
+	var json := JSON.new()
+	var parse_err := json.parse(raw_line)
+	if parse_err != OK:
+		_send_bridge_response({"ok": false, "error": "invalid_json"})
+		return
+
+	var message = json.data
+	if typeof(message) != TYPE_DICTIONARY:
+		_send_bridge_response({"ok": false, "error": "invalid_message"})
+		return
+
+	var command := str(message.get("cmd", ""))
+	match command:
+		"reset":
+			bridge_busy = true
+			_handle_bridge_reset()
+		"step":
+			var action := int(message.get("action", ACTION_IDLE))
+			bridge_busy = true
+			_handle_bridge_step(action)
+		_:
+			_send_bridge_response({"ok": false, "error": "unknown_command"})
+
+func _handle_bridge_step(action: int) -> void:
+	var result = await step(action)
+	_send_bridge_response({"ok": true, "result": result})
+	bridge_busy = false
+
+func _handle_bridge_reset() -> void:
+	var result = await reset_episode_async()
+	_send_bridge_response({"ok": true, "result": result})
+	bridge_busy = false
+
+func _send_bridge_response(payload: Dictionary) -> void:
+	if bridge_client == null:
+		return
+	bridge_client.poll()
+	var line := JSON.stringify(payload) + "\n"
+	bridge_client.put_data(line.to_utf8_buffer())
+
 func _run_debug_step() -> void:
 	var action := randi_range(0, 4)
 	var result = await step(action)
 	if debug_step_logging:
 		_log_step_result("action=%d" % action, result)
+
+func _run_debug_reset() -> void:
+	var result = await reset_episode_async()
+	if debug_step_logging:
+		_log_step_result("reset", result)
 
 func _log_step_result(label: String, result: Dictionary) -> void:
 	var observation = result.get("observation", [])
