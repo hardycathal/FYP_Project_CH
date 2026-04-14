@@ -24,7 +24,7 @@ except ImportError as exc:
     ) from exc
 
 
-OBS_SIZE = 29
+OBS_SIZE = 37
 NUM_ACTIONS = 5
 TOTAL_TIMESTEPS = 100_000
 MODEL_DIR = Path("Python") / "models"

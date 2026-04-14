@@ -20,7 +20,7 @@ extends Node3D
 @export var easy_training_mode := false
 @export var easy_arena_size := 12.0
 @export var easy_preparation_steps := 0
-@export var randomize_hider_spawn := true
+@export var randomize_hider_spawn := false
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -34,8 +34,8 @@ var hider_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
 
 var hider
-var seekerPos := Vector3(-8, 1, 8)
-var hiderPos := Vector3(-3, 1, -1)
+var seekerPos := Vector3(0, 1, 8)
+var hiderPos := Vector3(0, 1, -8)
 var player
 var hider_spawn_points := [
 	Vector3(-3, 1, -1),
@@ -354,9 +354,6 @@ func step(action: int) -> Dictionary:
 func _apply_environment_config() -> void:
 	if easy_training_mode:
 		arena_size = easy_arena_size
-		hiderPos = Vector3(0, 1, -3)
-	else:
-		hiderPos = Vector3(-5, 1, -5)
 
 func _get_preparation_steps() -> int:
 	return easy_preparation_steps if easy_training_mode else preparation_steps
