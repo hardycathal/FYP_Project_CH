@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -65,6 +66,7 @@ class GodotGymEnv(gym.Env):
 
 
 def main() -> None:
+    args = _parse_args()
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -76,7 +78,7 @@ def main() -> None:
         name_prefix="ppo_seeker",
     )
 
-    resume_path = _find_resume_path()
+    resume_path = None if args.from_scratch else _find_resume_path()
     if resume_path is not None:
         print(f"Resuming training from: {resume_path}")
         model = PPO.load(str(resume_path), env=env)
@@ -102,6 +104,16 @@ def main() -> None:
     )
     model.save(str(FINAL_MODEL_PATH))
     env.close()
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train the seeker PPO policy.")
+    parser.add_argument(
+        "--from-scratch",
+        action="store_true",
+        help="Ignore saved models/checkpoints and start a new PPO model.",
+    )
+    return parser.parse_args()
 
 
 def _find_resume_path() -> Path | None:
