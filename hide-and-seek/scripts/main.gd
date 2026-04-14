@@ -10,7 +10,7 @@ extends Node3D
 @export var catch_reward := 10.0
 @export var catch_distance := 1.5
 @export var step_penalty := 0.0
-@export var timeout_penalty := -1.0
+@export var timeout_penalty := -3.0
 @export var outer_wall_penalty := -0.002
 @export var debug_step_logging := true
 @export var action_repeat := 5
@@ -57,7 +57,7 @@ var bridge_busy := false
 
 var layouts = [
 	{
-		"name": "simple_room",
+		"name": "default_room",
 		"inner_walls": [
 			{ "pos": Vector2(-7, 0), "length": 6.0, "horizontal": true },
 			{ "pos": Vector2(-1, 0), "length": 2.0, "horizontal": true },
@@ -71,6 +71,14 @@ var layouts = [
 		"block_slots": [
 			{ "pos": Vector3(-3, 1.0, 0), "size": Vector3(3.0, 2.4, 1.5), "yaw": 0.0 },
 		],
+	},
+	{
+		"name": "simple_room",
+		"inner_walls": [
+			{ "pos": Vector2(-1, 0), "length": 4.0, "horizontal": true },
+		],
+		"boxes": [],
+		"block_slots": [],
 	}
 ]
 
@@ -78,7 +86,7 @@ var layouts = [
 func _ready() -> void:
 	_apply_environment_config()
 	_create_outer_walls()
-	load_layout(0)
+	load_layout(1)
 	_spawn_player()
 	stage_cam.current = true
 	_reset_state()
