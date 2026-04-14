@@ -23,27 +23,81 @@ class GodotEnv:
             self.sock = None
 
     def reset(self) -> tuple[list[float], dict[str, Any]]:
-        self._send_command({"cmd": "reset"})
-        response = self._send_command({"cmd": "step", "action": self.ACTION_IDLE})
-        result = self._unwrap_response(response)
-        return list(result["observation"]), dict(result["info"])
+        seeker_observation, _hider_observation, info = self.reset_both()
+        return seeker_observation, info
 
-    def step(self, action: int) -> tuple[list[float], float, bool, dict[str, Any]]:
-        response = self._send_command({"cmd": "step", "action": int(action)})
+    def reset_both(self) -> tuple[list[float], list[float], dict[str, Any]]:
+        self._send_command({"cmd": "reset"})
+        response = self._send_command(
+            {
+                "cmd": "step",
+                "seeker_action": self.ACTION_IDLE,
+                "hider_action": self.ACTION_IDLE,
+            }
+        )
         result = self._unwrap_response(response)
         return (
-            list(result["observation"]),
-            float(result["reward"]),
+            list(result["seeker_observation"]),
+            list(result["hider_observation"]),
+            dict(result["info"]),
+        )
+
+    def step(self, action: int) -> tuple[list[float], float, bool, dict[str, Any]]:
+        seeker_observation, _hider_observation, seeker_reward, _hider_reward, done, info = self.step_both(
+            int(action),
+            self.ACTION_IDLE,
+        )
+        return seeker_observation, seeker_reward, done, info
+
+    def step_both(
+        self,
+        seeker_action: int,
+        hider_action: int,
+    ) -> tuple[list[float], list[float], float, float, bool, dict[str, Any]]:
+        response = self._send_command(
+            {
+                "cmd": "step",
+                "seeker_action": int(seeker_action),
+                "hider_action": int(hider_action),
+            }
+        )
+        result = self._unwrap_response(response)
+        return (
+            list(result["seeker_observation"]),
+            list(result["hider_observation"]),
+            float(result["seeker_reward"]),
+            float(result["hider_reward"]),
             bool(result["done"]),
             dict(result["info"]),
         )
 
     def reset_raw(self) -> dict[str, Any]:
         self._send_command({"cmd": "reset"})
-        return self._send_command({"cmd": "step", "action": self.ACTION_IDLE})
+        return self._send_command(
+            {
+                "cmd": "step",
+                "seeker_action": self.ACTION_IDLE,
+                "hider_action": self.ACTION_IDLE,
+            }
+        )
 
     def step_raw(self, action: int) -> dict[str, Any]:
-        return self._send_command({"cmd": "step", "action": int(action)})
+        return self._send_command(
+            {
+                "cmd": "step",
+                "seeker_action": int(action),
+                "hider_action": self.ACTION_IDLE,
+            }
+        )
+
+    def step_raw_both(self, seeker_action: int, hider_action: int) -> dict[str, Any]:
+        return self._send_command(
+            {
+                "cmd": "step",
+                "seeker_action": int(seeker_action),
+                "hider_action": int(hider_action),
+            }
+        )
 
     def _send_command(self, payload: dict[str, Any]) -> dict[str, Any]:
         if self.sock is None:
