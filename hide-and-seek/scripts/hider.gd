@@ -6,9 +6,6 @@ extends CharacterBody3D
 @export var turn_speed := 2.5 #rad/s
 @export var accel := 20.0
 @onready var camera_3d: Camera3D = $head/Camera3D
-var spotted_by_seeker: bool = false
-var seeker_pos: Vector3 = Vector3.ZERO
-@export var move_towards_speed_factor := 1.5
 const rayScene = preload("res://scenes/raycast.tscn")
 const LAYER_WORLD := 1
 const LAYER_BOXES := 2
@@ -34,9 +31,8 @@ var current_random_action := ACTION_IDLE
 var random_action_frames_left := 0
 
 # Lifecycle and per-frame behavior
-func set_spotted(pos: Vector3) -> void:
-	spotted_by_seeker = true
-	seeker_pos = pos
+func set_spotted(_pos: Vector3) -> void:
+	pass
 
 func _ready() -> void:
 	create_env_rays()
@@ -46,31 +42,22 @@ func _input(event: InputEvent) -> void:
 		_toggle_grab()
 
 func _physics_process(delta: float) -> void:
-	var current_move_speed = move_speed
 	var forward := -transform.basis.z
 	var desired_vel := Vector3.ZERO
 
-	if spotted_by_seeker:
-		current_move_speed *= move_towards_speed_factor
+	var action := _get_hider_action()
 
-		var direction = (seeker_pos - global_position).normalized()
+	# --- ROTATION: A/D turn left/right ---
+	if action == ACTION_TURN_LEFT:
+		rotate_y(turn_speed * delta)
+	elif action == ACTION_TURN_RIGHT:
+		rotate_y(-turn_speed * delta)
 
-		desired_vel = direction * current_move_speed
-		look_at(seeker_pos, Vector3.UP)
-	else:
-		var action := _get_hider_action()
-
-		# --- ROTATION: A/D turn left/right ---
-		if action == ACTION_TURN_LEFT:
-			rotate_y(turn_speed * delta)
-		elif action == ACTION_TURN_RIGHT:
-			rotate_y(-turn_speed * delta)
-
-		# --- MOVEMENT: W/S move forward/backward along local forward ---
-		if action == ACTION_FORWARD:
-			desired_vel = forward * move_speed
-		elif action == ACTION_BACKWARD:
-			desired_vel = -forward * move_speed
+	# --- MOVEMENT: W/S move forward/backward along local forward ---
+	if action == ACTION_FORWARD:
+		desired_vel = forward * move_speed
+	elif action == ACTION_BACKWARD:
+		desired_vel = -forward * move_speed
 
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -239,8 +226,6 @@ func _try_snap_to_block_slot(box: RigidBody3D) -> bool:
 func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
 	if carried_box:
 		_release_box()
-	spotted_by_seeker = false
-	seeker_pos = Vector3.ZERO
 	current_random_action = ACTION_IDLE
 	random_action_frames_left = 0
 	velocity = Vector3.ZERO
