@@ -25,7 +25,7 @@ const ACTION_BACKWARD := 4
 @export var block_slot_snap_range := 1.75
 @export var manual_input_enabled := true
 @export var env_ray_length := 15.0
-@export var fov_ray_length := 5.0
+@export var fov_ray_length := 15.0
 var fov_rays: Array[RayCast3D] = []
 var env_rays: Array[RayCast3D] = []
 var carried_box: RigidBody3D

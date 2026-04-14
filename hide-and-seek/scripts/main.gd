@@ -6,7 +6,9 @@ extends Node3D
 @export var wall_thickness := 0.5
 @export var episode_length_steps := 180
 @export var preparation_steps := 30
-@export var sight_reward := 1.0
+@export var visible_reward := 0.02
+@export var catch_reward := 10.0
+@export var catch_distance := 1.5
 @export var step_penalty := -0.01
 @export var outer_wall_penalty := -0.002
 @export var debug_step_logging := true
@@ -307,14 +309,17 @@ func step(action: int) -> Dictionary:
 
 	var in_preparation := episode_step <= _get_preparation_steps()
 	var sees_hider: bool = player.sees_hider() if player != null else false
+	var caught_hider := _is_hider_caught()
 	var done := false
 	var reward := 0.0
 
 	if not in_preparation:
-		reward = sight_reward if sees_hider else step_penalty
+		reward = visible_reward if sees_hider else step_penalty
+		if caught_hider:
+			reward += catch_reward
 		if player != null and player.is_touching_outer_wall():
 			reward += outer_wall_penalty
-		done = sees_hider
+		done = caught_hider
 
 	if episode_step >= episode_length_steps:
 		done = true
@@ -330,6 +335,7 @@ func step(action: int) -> Dictionary:
 			"episode_step": episode_step,
 			"in_preparation": in_preparation,
 			"sees_hider": sees_hider,
+			"caught_hider": caught_hider,
 		},
 	}
 
@@ -348,6 +354,11 @@ func _select_hider_spawn() -> void:
 	if easy_training_mode or not randomize_hider_spawn or hider_spawn_points.is_empty():
 		return
 	hiderPos = hider_spawn_points[randi() % hider_spawn_points.size()]
+
+func _is_hider_caught() -> bool:
+	if player == null or hider == null:
+		return false
+	return player.global_position.distance_to(hider.global_position) <= catch_distance
 
 # Python bridge
 func _start_bridge_server() -> void:
