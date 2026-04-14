@@ -321,3 +321,6 @@ func _can_see_seeker() -> bool:
 			if collider is CharacterBody3D and collider.collision_layer == LAYER_SEEKER:
 				return true
 	return false
+
+func sees_seeker() -> bool:
+	return _can_see_seeker()

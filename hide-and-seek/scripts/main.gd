@@ -271,7 +271,11 @@ func reset_episode() -> Dictionary:
 	_reset_state()
 	return {
 		"observation": player.get_observation() if player else [],
+		"seeker_observation": player.get_observation() if player else [],
+		"hider_observation": hider.get_observation() if hider else [],
 		"reward": 0.0,
+		"seeker_reward": 0.0,
+		"hider_reward": 0.0,
 		"done": false,
 		"info": {
 			"episode_step": episode_step,
@@ -290,7 +294,11 @@ func reset_episode_async() -> Dictionary:
 	await get_tree().physics_frame
 	return {
 		"observation": player.get_observation() if player else [],
+		"seeker_observation": player.get_observation() if player else [],
+		"hider_observation": hider.get_observation() if hider else [],
 		"reward": 0.0,
+		"seeker_reward": 0.0,
+		"hider_reward": 0.0,
 		"done": false,
 		"info": {
 			"episode_step": episode_step,
@@ -298,7 +306,7 @@ func reset_episode_async() -> Dictionary:
 		},
 	}
 
-func step(action: int) -> Dictionary:
+func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 	if not episode_active:
 		_reset_state()
 
@@ -306,33 +314,42 @@ func step(action: int) -> Dictionary:
 		if episode_step < _get_preparation_steps():
 			player.set_action(ACTION_IDLE)
 		else:
-			player.set_action(action)
+			player.set_action(seeker_action)
+	if hider:
+		hider.set_action(hider_action)
 
 	for _i in range(action_repeat):
 		await get_tree().physics_frame
 
 	if player:
 		player.clear_action_override()
+	if hider:
+		hider.clear_action_override()
 
 	episode_step += 1
 
 	var in_preparation := episode_step <= _get_preparation_steps()
 	var sees_hider: bool = player.sees_hider() if player != null else false
+	var sees_seeker: bool = hider.sees_seeker() if hider != null else false
 	var caught_hider := _is_hider_caught()
 	var done := false
-	var reward := 0.0
+	var seeker_reward := 0.0
+	var hider_reward := 0.0
 
 	if not in_preparation:
-		reward = visible_reward if sees_hider else step_penalty
+		seeker_reward = visible_reward if sees_hider else step_penalty
+		hider_reward = -visible_reward if sees_hider else 0.0
 		if caught_hider:
-			reward += catch_reward
+			seeker_reward += catch_reward
+			hider_reward -= catch_reward
 		if player != null and player.is_touching_outer_wall():
-			reward += outer_wall_penalty
+			seeker_reward += outer_wall_penalty
 		done = caught_hider
 
 	if episode_step >= episode_length_steps:
 		if not caught_hider:
-			reward += timeout_penalty
+			seeker_reward += timeout_penalty
+			hider_reward -= timeout_penalty
 		done = true
 
 	if done:
@@ -340,12 +357,17 @@ func step(action: int) -> Dictionary:
 
 	return {
 		"observation": player.get_observation() if player else [],
-		"reward": reward,
+		"seeker_observation": player.get_observation() if player else [],
+		"hider_observation": hider.get_observation() if hider else [],
+		"reward": seeker_reward,
+		"seeker_reward": seeker_reward,
+		"hider_reward": hider_reward,
 		"done": done,
 		"info": {
 			"episode_step": episode_step,
 			"in_preparation": in_preparation,
 			"sees_hider": sees_hider,
+			"sees_seeker": sees_seeker,
 			"caught_hider": caught_hider,
 		},
 	}
@@ -434,14 +456,15 @@ func _handle_bridge_line(raw_line: String) -> void:
 			bridge_busy = true
 			_handle_bridge_reset()
 		"step":
-			var action := int(message.get("action", ACTION_IDLE))
+			var seeker_action := int(message.get("seeker_action", message.get("action", ACTION_IDLE)))
+			var hider_action := int(message.get("hider_action", ACTION_IDLE))
 			bridge_busy = true
-			_handle_bridge_step(action)
+			_handle_bridge_step(seeker_action, hider_action)
 		_:
 			_send_bridge_response({"ok": false, "error": "unknown_command"})
 
-func _handle_bridge_step(action: int) -> void:
-	var result = await step(action)
+func _handle_bridge_step(seeker_action: int, hider_action: int) -> void:
+	var result = await step(seeker_action, hider_action)
 	_send_bridge_response({"ok": true, "result": result})
 	bridge_busy = false
 
@@ -459,10 +482,11 @@ func _send_bridge_response(payload: Dictionary) -> void:
 
 # In-editor environment testing
 func _run_debug_step() -> void:
-	var action := randi_range(0, 4)
-	var result = await step(action)
+	var seeker_action := randi_range(0, 4)
+	var hider_action := randi_range(0, 4)
+	var result = await step(seeker_action, hider_action)
 	if debug_step_logging:
-		_log_step_result("action=%d" % action, result)
+		_log_step_result("seeker=%d hider=%d" % [seeker_action, hider_action], result)
 
 func _run_debug_reset() -> void:
 	var result = await reset_episode_async()
