@@ -273,6 +273,7 @@ func _get_manual_action() -> int:
 # Observation helpers
 func get_observation() -> Array[float]:
 	var observation: Array[float] = []
+	var sees_hider := _can_see_hider()
 	observation.append(velocity.x / move_speed)
 	observation.append(velocity.z / move_speed)
 	observation.append(sin(rotation.y))
@@ -280,7 +281,8 @@ func get_observation() -> Array[float]:
 	observation.append(1.0 if carried_box else 0.0)
 	observation.append_array(_get_ray_distance_observations(env_rays, env_ray_length))
 	observation.append_array(_get_ray_distance_observations(fov_rays, fov_ray_length))
-	observation.append(1.0 if _can_see_hider() else 0.0)
+	observation.append(1.0 if sees_hider else 0.0)
+	observation.append_array(_get_visible_hider_motion_features(sees_hider))
 	return observation
 
 func _get_ray_distance_observations(rays: Array[RayCast3D], max_length: float) -> Array[float]:
@@ -302,6 +304,19 @@ func _can_see_hider() -> bool:
 		if ray.is_colliding() and ray.get_collider() == hider_ref:
 			return true
 	return false
+
+func _get_visible_hider_motion_features(sees_hider: bool) -> Array[float]:
+	if not sees_hider or hider_ref == null:
+		return [0.0, 0.0, 0.0, 0.0]
+
+	var hider_velocity := hider_ref.velocity
+	var hider_heading := hider_ref.global_transform.basis.z
+	return [
+		hider_velocity.x / move_speed,
+		hider_velocity.z / move_speed,
+		hider_heading.x,
+		hider_heading.z,
+	]
 
 func _update_wall_contact_state() -> void:
 	for i in range(get_slide_collision_count()):

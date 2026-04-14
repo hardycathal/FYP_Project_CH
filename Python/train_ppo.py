@@ -24,9 +24,9 @@ except ImportError as exc:
     ) from exc
 
 
-OBS_SIZE = 37
+OBS_SIZE = 42
 NUM_ACTIONS = 5
-TOTAL_TIMESTEPS = 100_000
+TOTAL_TIMESTEPS = 500_000
 MODEL_DIR = Path("Python") / "models"
 LOG_DIR = Path("Python") / "logs"
 CHECKPOINT_DIR = MODEL_DIR / "checkpoints"
@@ -89,8 +89,8 @@ def main() -> None:
             env=env,
             verbose=1,
             tensorboard_log=str(LOG_DIR),
-            n_steps=180,
-            batch_size=60,
+            n_steps=2048,
+            batch_size=64,
             learning_rate=3e-4,
             gamma=0.99,
             gae_lambda=0.95,

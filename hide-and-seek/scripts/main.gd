@@ -5,13 +5,13 @@ extends Node3D
 @export var wall_height := 3.0
 @export var wall_thickness := 0.5
 @export var episode_length_steps := 180
-@export var preparation_steps := 30
+@export var preparation_steps := 0
 @export var visible_reward := 0.005
 @export var catch_reward := 10.0
 @export var catch_distance := 1.5
 @export var step_penalty := 0.0
-@export var timeout_penalty := -3.0
-@export var outer_wall_penalty := -0.002
+@export var timeout_penalty := -5.0
+@export var outer_wall_penalty := 0.0
 @export var debug_step_logging := true
 @export var action_repeat := 5
 @export var bridge_enabled := true
@@ -20,7 +20,8 @@ extends Node3D
 @export var easy_training_mode := false
 @export var easy_arena_size := 12.0
 @export var easy_preparation_steps := 0
-@export var randomize_hider_spawn := false
+@export var randomize_hider_spawn := true
+@export var randomize_seeker_spawn := true
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -36,12 +37,19 @@ var hider_cam: Camera3D
 var hider
 var seekerPos := Vector3(0, 1, 8)
 var hiderPos := Vector3(0, 1, -8)
+var hiderYaw := PI
 var player
+var seeker_spawn_points := [
+	Vector3(-4, 1, 7),
+	Vector3(0, 1, 7),
+	Vector3(4, 1, 7),
+	Vector3(0, 1, 4),
+]
 var hider_spawn_points := [
-	Vector3(-3, 1, -1),
-	Vector3(-2, 1, -2),
-	Vector3(-4, 1, -1),
-	Vector3(-3, 1, 1),
+	Vector3(-4, 1, -7),
+	Vector3(0, 1, -7),
+	Vector3(4, 1, -7),
+	Vector3(0, 1, -4),
 ]
 
 var layout_nodes: Array[Node] = []
@@ -50,10 +58,12 @@ var box_spawn_positions: Array[Vector3] = []
 
 var episode_step := 0
 var episode_active := false
+var previous_seeker_hider_distance := 0.0
 var bridge_server := TCPServer.new()
 var bridge_client: StreamPeerTCP
 var bridge_buffer := ""
 var bridge_busy := false
+var current_layout_index := 2
 
 var layouts = [
 	{
@@ -75,7 +85,7 @@ var layouts = [
 	{
 		"name": "simple_room",
 		"inner_walls": [
-			{ "pos": Vector2(-1, 0), "length": 4.0, "horizontal": true },
+		
 		],
 		"boxes": [],
 		"block_slots": [],
@@ -86,7 +96,7 @@ var layouts = [
 func _ready() -> void:
 	_apply_environment_config()
 	_create_outer_walls()
-	load_layout(1)
+	load_layout(current_layout_index)
 	_spawn_player()
 	stage_cam.current = true
 	_reset_state()
@@ -98,6 +108,8 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"):
 		_reset_state()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_L:
+		_cycle_layout()
 	if event.is_action_pressed("debug_reset"):
 		_run_debug_reset()
 	if event.is_action_pressed("debug_step"):
@@ -119,6 +131,7 @@ func _input(event: InputEvent) -> void:
 
 # Arena and layout construction
 func load_layout(index: int) -> void:
+	current_layout_index = posmod(index, layouts.size())
 	for node in layout_nodes:
 		if is_instance_valid(node):
 			node.queue_free()
@@ -126,7 +139,7 @@ func load_layout(index: int) -> void:
 	box_nodes.clear()
 	box_spawn_positions.clear()
 
-	var layout = layouts[index]
+	var layout = layouts[current_layout_index]
 	var box_list = layout["boxes"]
 	var block_slots = layout.get("block_slots", [])
 
@@ -150,6 +163,10 @@ func load_layout(index: int) -> void:
 
 	for slot_data in block_slots:
 		_create_block_slot(slot_data["pos"], slot_data["size"], slot_data["yaw"])
+
+func _cycle_layout() -> void:
+	load_layout(current_layout_index + 1)
+	_reset_state()
 
 func _create_outer_walls() -> void:
 	var half := arena_size / 2.0
@@ -205,6 +222,7 @@ func _spawn_player() -> void:
 	player.hider_ref = hider
 	player.position = seekerPos
 	hider.position = hiderPos
+	hider.rotation.y = hiderYaw
 	hider_cam = hider.get_node("head/Camera3D")
 	player_cam = player.get_node("head/Camera3D")
 
@@ -248,12 +266,16 @@ func _reset_state() -> void:
 	episode_step = 0
 	episode_active = true
 
+	_select_seeker_spawn()
+	_select_hider_spawn()
+
 	if player:
 		player.reset_agent_state(seekerPos)
 		player.clear_action_override()
 	if hider:
-		_select_hider_spawn()
-		hider.reset_agent_state(hiderPos)
+		hider.reset_agent_state(hiderPos, hiderYaw)
+
+	previous_seeker_hider_distance = seekerPos.distance_to(hiderPos)
 
 	for i in range(box_nodes.size()):
 		var box := box_nodes[i]
@@ -292,10 +314,12 @@ func reset_episode_async() -> Dictionary:
 	await get_tree().process_frame
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	var seeker_obs := _augment_observation(player.get_observation() if player else [])
+	var hider_obs := _augment_observation(hider.get_observation() if hider else [])
 	return {
-		"observation": player.get_observation() if player else [],
-		"seeker_observation": player.get_observation() if player else [],
-		"hider_observation": hider.get_observation() if hider else [],
+		"observation": seeker_obs,
+		"seeker_observation": seeker_obs,
+		"hider_observation": hider_obs,
 		"reward": 0.0,
 		"seeker_reward": 0.0,
 		"hider_reward": 0.0,
@@ -328,17 +352,19 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 
 	episode_step += 1
 
-	var in_preparation := episode_step <= _get_preparation_steps()
+	var in_preparation: bool = episode_step <= _get_preparation_steps()
 	var sees_hider: bool = player.sees_hider() if player != null else false
 	var sees_seeker: bool = hider.sees_seeker() if hider != null else false
-	var caught_hider := _is_hider_caught()
-	var done := false
-	var seeker_reward := 0.0
-	var hider_reward := 0.0
+	var caught_hider: bool = _is_hider_caught()
+	var current_distance: float = _get_seeker_hider_distance()
+	var distance_delta: float = max(previous_seeker_hider_distance - current_distance, 0.0)
+	var done: bool = false
+	var seeker_reward: float = 0.0
+	var hider_reward: float = 0.0
 
 	if not in_preparation:
-		seeker_reward = visible_reward if sees_hider else step_penalty
-		hider_reward = -visible_reward if sees_hider else 0.0
+		seeker_reward = 0.05 * distance_delta
+		hider_reward = -seeker_reward
 		if caught_hider:
 			seeker_reward += catch_reward
 			hider_reward -= catch_reward
@@ -355,10 +381,14 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 	if done:
 		episode_active = false
 
+	previous_seeker_hider_distance = current_distance
+
+	var seeker_obs := _augment_observation(player.get_observation() if player else [])
+	var hider_obs := _augment_observation(hider.get_observation() if hider else [])
 	return {
-		"observation": player.get_observation() if player else [],
-		"seeker_observation": player.get_observation() if player else [],
-		"hider_observation": hider.get_observation() if hider else [],
+		"observation": seeker_obs,
+		"seeker_observation": seeker_obs,
+		"hider_observation": hider_obs,
 		"reward": seeker_reward,
 		"seeker_reward": seeker_reward,
 		"hider_reward": hider_reward,
@@ -374,6 +404,22 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 
 # Training configuration helpers
 func _apply_environment_config() -> void:
+	current_layout_index = 1
+	preparation_steps = 0
+	randomize_seeker_spawn = true
+	randomize_hider_spawn = true
+	seeker_spawn_points = [
+		#Vector3(-4, 1, 7),
+		Vector3(0, 1, 7),
+		#Vector3(4, 1, 7),
+		#Vector3(0, 1, 4),
+	]
+	hider_spawn_points = [
+		#Vector3(-4, 1, -7),
+		Vector3(0, 1, -7),
+		#Vector3(4, 1, -7),
+		#Vector3(0, 1, -4),
+	]
 	if easy_training_mode:
 		arena_size = easy_arena_size
 
@@ -385,10 +431,25 @@ func _select_hider_spawn() -> void:
 		return
 	hiderPos = hider_spawn_points[randi() % hider_spawn_points.size()]
 
+func _select_seeker_spawn() -> void:
+	if easy_training_mode or not randomize_seeker_spawn or seeker_spawn_points.is_empty():
+		return
+	seekerPos = seeker_spawn_points[randi() % seeker_spawn_points.size()]
+
 func _is_hider_caught() -> bool:
 	if player == null or hider == null:
 		return false
 	return player.global_position.distance_to(hider.global_position) <= catch_distance
+
+func _get_seeker_hider_distance() -> float:
+	if player == null or hider == null:
+		return 0.0
+	return player.global_position.distance_to(hider.global_position)
+
+func _augment_observation(obs: Array) -> Array:
+	var augmented := obs.duplicate()
+	augmented.append(float(episode_step) / float(episode_length_steps))
+	return augmented
 
 # Python bridge
 func _start_bridge_server() -> void:

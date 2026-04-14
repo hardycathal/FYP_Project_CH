@@ -52,3 +52,13 @@ runs/
 logs/
 HowToFix.txt
 checkpoints1/
+train_hider_ppo.py
+Emergent Tool Use From Multi-Agent Autocurricula.pdf
+Python/logs_dual_hider/
+Python/logs_dual_seeker/
+Python/logs_hider/
+Python/models/dual_hider_checkpoints/
+Python/models/dual_seeker_checkpoints/
+Python/models/hider_model.zip
+QUESTIONRESPONSE.txt
+Python/train_dual_ppo.py
