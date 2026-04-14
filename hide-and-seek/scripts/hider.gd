@@ -24,6 +24,7 @@ const ACTION_BACKWARD := 4
 @export var block_slot_snap_range := 1.75
 @export var random_policy_enabled := false
 @export var random_action_interval := 24
+@export var manual_input_enabled := true
 @export var env_ray_length := 15.0
 @export var fov_ray_length := 15.0
 var fov_rays: Array[RayCast3D] = []
@@ -31,6 +32,8 @@ var env_rays: Array[RayCast3D] = []
 var carried_box: RigidBody3D
 var carried_box_layer := 0
 var carried_box_mask := 0
+var current_action := ACTION_IDLE
+var action_override_enabled := false
 var current_random_action := ACTION_IDLE
 var random_action_frames_left := 0
 
@@ -50,7 +53,7 @@ func _physics_process(delta: float) -> void:
 	var forward := -transform.basis.z
 	var desired_vel := Vector3.ZERO
 
-	var action := _get_hider_action()
+	var action := _get_effective_action()
 
 	# --- ROTATION: A/D turn left/right ---
 	if action == ACTION_TURN_LEFT:
@@ -231,14 +234,35 @@ func _try_snap_to_block_slot(box: RigidBody3D) -> bool:
 	return true
 
 # Reset and action selection
+func set_action(action_id: int) -> void:
+	current_action = clampi(action_id, ACTION_IDLE, ACTION_BACKWARD)
+	action_override_enabled = true
+
+func clear_action_override() -> void:
+	action_override_enabled = false
+	current_action = ACTION_IDLE
+
+func set_manual_input_enabled(enabled: bool) -> void:
+	manual_input_enabled = enabled
+
 func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
 	if carried_box:
 		_release_box()
+	clear_action_override()
 	current_random_action = ACTION_IDLE
 	random_action_frames_left = 0
 	velocity = Vector3.ZERO
 	global_position = position
 	rotation = Vector3(0.0, yaw, 0.0)
+
+func _get_effective_action() -> int:
+	if action_override_enabled:
+		return current_action
+	if random_policy_enabled:
+		return _get_random_action()
+	if manual_input_enabled:
+		return _get_manual_action()
+	return ACTION_IDLE
 
 func _get_hider_action() -> int:
 	if random_policy_enabled:
@@ -262,3 +286,38 @@ func _get_manual_action() -> int:
 	if Input.is_action_pressed("arrow_down"):
 		return ACTION_BACKWARD
 	return ACTION_IDLE
+
+# Observation helpers
+func get_observation() -> Array[float]:
+	var observation: Array[float] = []
+	observation.append(velocity.x / move_speed)
+	observation.append(velocity.z / move_speed)
+	observation.append(sin(rotation.y))
+	observation.append(cos(rotation.y))
+	observation.append(1.0 if carried_box else 0.0)
+	observation.append_array(_get_ray_distance_observations(env_rays, env_ray_length))
+	observation.append_array(_get_ray_distance_observations(fov_rays, fov_ray_length))
+	observation.append(1.0 if _can_see_seeker() else 0.0)
+	return observation
+
+func _get_ray_distance_observations(rays: Array[RayCast3D], max_length: float) -> Array[float]:
+	var distances: Array[float] = []
+
+	for ray in rays:
+		ray.force_raycast_update()
+		if ray.is_colliding():
+			var hit_distance := ray.global_position.distance_to(ray.get_collision_point())
+			distances.append(clampf(hit_distance / max_length, 0.0, 1.0))
+		else:
+			distances.append(1.0)
+
+	return distances
+
+func _can_see_seeker() -> bool:
+	for ray in fov_rays:
+		ray.force_raycast_update()
+		if ray.is_colliding():
+			var collider := ray.get_collider()
+			if collider is CharacterBody3D and collider.collision_layer == LAYER_SEEKER:
+				return true
+	return false
