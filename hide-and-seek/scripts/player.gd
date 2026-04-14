@@ -86,7 +86,7 @@ func _physics_process(delta: float) -> void:
 
 # Ray setup
 func create_fov_rays() -> void:
-	fov_rays = _create_rays(7, 90.0, fov_ray_length, fov_mask, Color(1.0, 0.0, 0.0))
+	fov_rays = _create_rays(15, 90.0, fov_ray_length, fov_mask, Color(1.0, 0.0, 0.0))
 
 func create_env_rays() -> void:
 	env_rays = _create_rays(16, 360.0, env_ray_length, env_mask, Color(1.0, 0.5, 0.0))
