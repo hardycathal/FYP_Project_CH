@@ -9,7 +9,7 @@ extends Node3D
 @export var visible_reward := 0.02
 @export var catch_reward := 10.0
 @export var catch_distance := 1.5
-@export var step_penalty := -0.01
+@export var step_penalty := 0.0
 @export var outer_wall_penalty := -0.002
 @export var debug_step_logging := true
 @export var action_repeat := 5
