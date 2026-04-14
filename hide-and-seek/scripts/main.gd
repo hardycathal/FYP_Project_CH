@@ -4,16 +4,19 @@ extends Node3D
 @export var wall_height := 3.0
 @export var wall_thickness := 0.5
 @export var episode_length_steps := 180
-@export var preparation_steps := 60
+@export var preparation_steps := 30
 @export var sight_reward := 1.0
 @export var step_penalty := -0.01
+@export var outer_wall_penalty := -0.002
 @export var debug_step_logging := true
 @export var action_repeat := 5
 @export var bridge_enabled := true
 @export var bridge_port := 19000
+@export var spawn_boxes := false
 @export var easy_training_mode := false
 @export var easy_arena_size := 12.0
 @export var easy_preparation_steps := 0
+@export var randomize_hider_spawn := true
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -26,9 +29,15 @@ var hider_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
 
 var hider
-var seekerPos := Vector3(0, 1, 0)
-var hiderPos := Vector3(-5, 1, -5)
+var seekerPos := Vector3(-8, 1, 8)
+var hiderPos := Vector3(-3, 1, -1)
 var player
+var hider_spawn_points := [
+	Vector3(-3, 1, -1),
+	Vector3(-2, 1, -2),
+	Vector3(-4, 1, -1),
+	Vector3(-3, 1, 1),
+]
 
 var layout_nodes: Array[Node] = []
 var box_nodes: Array[RigidBody3D] = []
@@ -47,7 +56,8 @@ var layouts = [
 		"inner_walls": [
 			{ "pos": Vector2(-7, 0), "length": 6.0, "horizontal": true },
 			{ "pos": Vector2(-1, 0), "length": 2.0, "horizontal": true },
-			{ "pos": Vector2(0, -5), "length": 10.0, "horizontal": false },
+			{ "pos": Vector2(0, -7), "length": 6.0, "horizontal": false },
+			{ "pos": Vector2(0, -1), "length": 2.0, "horizontal": false },
 		],
 		"boxes": [
 			Vector3(2, 0.5, 2),
@@ -104,6 +114,10 @@ func load_layout(index: int) -> void:
 	var layout = layouts[index]
 	var box_list = layout["boxes"]
 	var block_slots = layout.get("block_slots", [])
+
+	if not spawn_boxes:
+		box_list = []
+		block_slots = []
 
 	if easy_training_mode:
 		box_list = []
@@ -222,6 +236,7 @@ func _reset_state() -> void:
 		player.reset_agent_state(seekerPos)
 		player.clear_action_override()
 	if hider:
+		_select_hider_spawn()
 		hider.reset_agent_state(hiderPos)
 
 	for i in range(box_nodes.size()):
@@ -292,6 +307,8 @@ func step(action: int) -> Dictionary:
 
 	if not in_preparation:
 		reward = sight_reward if sees_hider else step_penalty
+		if player != null and player.is_touching_outer_wall():
+			reward += outer_wall_penalty
 		done = sees_hider
 
 	if episode_step >= episode_length_steps:
@@ -320,6 +337,11 @@ func _apply_environment_config() -> void:
 
 func _get_preparation_steps() -> int:
 	return easy_preparation_steps if easy_training_mode else preparation_steps
+
+func _select_hider_spawn() -> void:
+	if easy_training_mode or not randomize_hider_spawn or hider_spawn_points.is_empty():
+		return
+	hiderPos = hider_spawn_points[randi() % hider_spawn_points.size()]
 
 func _start_bridge_server() -> void:
 	if not bridge_enabled:

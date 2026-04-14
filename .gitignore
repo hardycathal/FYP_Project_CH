@@ -2,6 +2,7 @@
 # GODOT / PYTHON PROJECT - .gitignore
 # ====================================================
 *.md
+multi-agent-emergence-unity-main/
 # ---------- GODOT ----------
 hide-and-seek/.godot/
 hide-and-seek/.import/
