@@ -1,5 +1,6 @@
 extends Node3D
 
+# Environment configuration
 @export var arena_size := 20.0
 @export var wall_height := 3.0
 @export var wall_thickness := 0.5
@@ -24,6 +25,7 @@ const seekerScene := preload("res://scenes/seeker.tscn")
 const SLOT_GROUP := "block_slot"
 const ACTION_IDLE := 0
 
+# Runtime state
 var player_cam: Camera3D
 var hider_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
@@ -69,6 +71,7 @@ var layouts = [
 	}
 ]
 
+# Scene lifecycle and debug controls
 func _ready() -> void:
 	_apply_environment_config()
 	_create_outer_walls()
@@ -103,6 +106,7 @@ func _input(event: InputEvent) -> void:
 		player_cam.current = false
 		hider_cam.current = false
 
+# Arena and layout construction
 func load_layout(index: int) -> void:
 	for node in layout_nodes:
 		if is_instance_valid(node):
@@ -228,6 +232,7 @@ func _create_block_slot(pos: Vector3, size: Vector3, yaw: float) -> void:
 	add_child(slot)
 	layout_nodes.append(slot)
 
+# Environment reset and stepping
 func _reset_state() -> void:
 	episode_step = 0
 	episode_active = true
@@ -328,6 +333,7 @@ func step(action: int) -> Dictionary:
 		},
 	}
 
+# Training configuration helpers
 func _apply_environment_config() -> void:
 	if easy_training_mode:
 		arena_size = easy_arena_size
@@ -343,6 +349,7 @@ func _select_hider_spawn() -> void:
 		return
 	hiderPos = hider_spawn_points[randi() % hider_spawn_points.size()]
 
+# Python bridge
 func _start_bridge_server() -> void:
 	if not bridge_enabled:
 		return
@@ -431,6 +438,7 @@ func _send_bridge_response(payload: Dictionary) -> void:
 	var line := JSON.stringify(payload) + "\n"
 	bridge_client.put_data(line.to_utf8_buffer())
 
+# In-editor environment testing
 func _run_debug_step() -> void:
 	var action := randi_range(0, 4)
 	var result = await step(action)
