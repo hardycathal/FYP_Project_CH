@@ -11,6 +11,9 @@ extends Node3D
 @export var action_repeat := 5
 @export var bridge_enabled := true
 @export var bridge_port := 19000
+@export var easy_training_mode := false
+@export var easy_arena_size := 12.0
+@export var easy_preparation_steps := 0
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -57,6 +60,7 @@ var layouts = [
 ]
 
 func _ready() -> void:
+	_apply_environment_config()
 	_create_outer_walls()
 	load_layout(0)
 	_spawn_player()
@@ -98,6 +102,12 @@ func load_layout(index: int) -> void:
 	box_spawn_positions.clear()
 
 	var layout = layouts[index]
+	var box_list = layout["boxes"]
+	var block_slots = layout.get("block_slots", [])
+
+	if easy_training_mode:
+		box_list = []
+		block_slots = []
 
 	for w in layout["inner_walls"]:
 		var pos2: Vector2 = w["pos"]
@@ -106,10 +116,10 @@ func load_layout(index: int) -> void:
 		var pos3 := Vector3(pos2.x, wall_height / 2.0, pos2.y)
 		_create_inner_wall(pos3, length, horizontal)
 
-	for i in range(layout["boxes"].size()):
-		_create_box(layout["boxes"][i], i + 1)
+	for i in range(box_list.size()):
+		_create_box(box_list[i], i + 1)
 
-	for slot_data in layout.get("block_slots", []):
+	for slot_data in block_slots:
 		_create_block_slot(slot_data["pos"], slot_data["size"], slot_data["yaw"])
 
 func _create_outer_walls() -> void:
@@ -262,7 +272,7 @@ func step(action: int) -> Dictionary:
 		_reset_state()
 
 	if player:
-		if episode_step < preparation_steps:
+		if episode_step < _get_preparation_steps():
 			player.set_action(ACTION_IDLE)
 		else:
 			player.set_action(action)
@@ -275,7 +285,7 @@ func step(action: int) -> Dictionary:
 
 	episode_step += 1
 
-	var in_preparation := episode_step <= preparation_steps
+	var in_preparation := episode_step <= _get_preparation_steps()
 	var sees_hider: bool = player.sees_hider() if player != null else false
 	var done := false
 	var reward := 0.0
@@ -300,6 +310,16 @@ func step(action: int) -> Dictionary:
 			"sees_hider": sees_hider,
 		},
 	}
+
+func _apply_environment_config() -> void:
+	if easy_training_mode:
+		arena_size = easy_arena_size
+		hiderPos = Vector3(0, 1, -3)
+	else:
+		hiderPos = Vector3(-5, 1, -5)
+
+func _get_preparation_steps() -> int:
+	return easy_preparation_steps if easy_training_mode else preparation_steps
 
 func _start_bridge_server() -> void:
 	if not bridge_enabled:
