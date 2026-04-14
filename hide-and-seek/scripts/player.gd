@@ -31,6 +31,7 @@ var carried_box_layer := 0
 var carried_box_mask := 0
 var current_action := ACTION_IDLE
 var action_override_enabled := false
+var touched_outer_wall := false
 
 func _ready() -> void:
 	create_fov_rays()
@@ -41,6 +42,7 @@ func _input(event: InputEvent) -> void:
 		_toggle_grab()
 
 func _physics_process(delta: float) -> void:
+	touched_outer_wall = false
 	var hider_spotted = false
 	for r in fov_rays:
 		r.force_raycast_update()
@@ -76,6 +78,7 @@ func _physics_process(delta: float) -> void:
 	velocity.z = move_toward(velocity.z, desired_vel.z, accel * delta)
 
 	move_and_slide()
+	_update_wall_contact_state()
 	_update_carried_box()
 
 func create_fov_rays() -> void:
@@ -293,8 +296,19 @@ func _can_see_hider() -> bool:
 			return true
 	return false
 
+func _update_wall_contact_state() -> void:
+	for i in range(get_slide_collision_count()):
+		var collision := get_slide_collision(i)
+		var collider = collision.get_collider()
+		if collider is Node and str(collider.name).begins_with("Wall_") and str(collider.name) != "Wall_Inner":
+			touched_outer_wall = true
+			return
+
 func sees_hider() -> bool:
 	return _can_see_hider()
+
+func is_touching_outer_wall() -> bool:
+	return touched_outer_wall
 
 func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
 	if carried_box:

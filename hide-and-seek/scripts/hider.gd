@@ -1,6 +1,6 @@
 extends CharacterBody3D
 @onready var head: Node3D = $head
-@export var move_speed := 5.0 #m/s
+@export var move_speed := 3.0 #m/s
 @export var turn_speed := 2.5 #rad/s
 @export var accel := 20.0
 @onready var camera_3d: Camera3D = $head/Camera3D
@@ -13,14 +13,23 @@ const LAYER_BOXES := 2
 const LAYER_HIDER := 4
 const LAYER_SEEKER := 8
 const BLOCK_SLOT_GROUP := "block_slot"
+const ACTION_IDLE := 0
+const ACTION_FORWARD := 1
+const ACTION_TURN_LEFT := 2
+const ACTION_TURN_RIGHT := 3
+const ACTION_BACKWARD := 4
 @export_flags_3d_physics var env_mask := LAYER_WORLD | LAYER_BOXES
 @export var grab_range := 2.5
 @export var carry_offset := Vector3(0.0, 1.2, -2.0)
 @export var block_slot_snap_range := 1.75
+@export var random_policy_enabled := true
+@export var random_action_interval := 24
 var env_rays: Array[RayCast3D] = []
 var carried_box: RigidBody3D
 var carried_box_layer := 0
 var carried_box_mask := 0
+var current_random_action := ACTION_IDLE
+var random_action_frames_left := 0
 
 func set_spotted(pos: Vector3) -> void:
 	spotted_by_seeker = true
@@ -46,16 +55,18 @@ func _physics_process(delta: float) -> void:
 		desired_vel = direction * current_move_speed
 		look_at(seeker_pos, Vector3.UP)
 	else:
+		var action := _get_hider_action()
+
 		# --- ROTATION: A/D turn left/right ---
-		if Input.is_action_pressed("arrow_left"):
+		if action == ACTION_TURN_LEFT:
 			rotate_y(turn_speed * delta)
-		elif Input.is_action_pressed("arrow_right"):
+		elif action == ACTION_TURN_RIGHT:
 			rotate_y(-turn_speed * delta)
 
 		# --- MOVEMENT: W/S move forward/backward along local forward ---
-		if Input.is_action_pressed("arrow_up"):
+		if action == ACTION_FORWARD:
 			desired_vel = forward * move_speed
-		elif Input.is_action_pressed("arrow_down"):
+		elif action == ACTION_BACKWARD:
 			desired_vel = -forward * move_speed
 
 	if not is_on_floor():
@@ -224,6 +235,31 @@ func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
 		_release_box()
 	spotted_by_seeker = false
 	seeker_pos = Vector3.ZERO
+	current_random_action = ACTION_IDLE
+	random_action_frames_left = 0
 	velocity = Vector3.ZERO
 	global_position = position
 	rotation = Vector3(0.0, yaw, 0.0)
+
+func _get_hider_action() -> int:
+	if random_policy_enabled:
+		return _get_random_action()
+	return _get_manual_action()
+
+func _get_random_action() -> int:
+	if random_action_frames_left <= 0:
+		current_random_action = randi_range(ACTION_IDLE, ACTION_BACKWARD)
+		random_action_frames_left = random_action_interval
+	random_action_frames_left -= 1
+	return current_random_action
+
+func _get_manual_action() -> int:
+	if Input.is_action_pressed("arrow_left"):
+		return ACTION_TURN_LEFT
+	if Input.is_action_pressed("arrow_right"):
+		return ACTION_TURN_RIGHT
+	if Input.is_action_pressed("arrow_up"):
+		return ACTION_FORWARD
+	if Input.is_action_pressed("arrow_down"):
+		return ACTION_BACKWARD
+	return ACTION_IDLE
