@@ -1,4 +1,6 @@
 extends CharacterBody3D
+
+# Movement, sensing, and interaction configuration
 @onready var head: Node3D = $head
 @export var move_speed := 5.0 #m/s
 @export var turn_speed := 2.5 #rad/s
@@ -33,6 +35,7 @@ var current_action := ACTION_IDLE
 var action_override_enabled := false
 var touched_outer_wall := false
 
+# Lifecycle and per-frame control
 func _ready() -> void:
 	create_fov_rays()
 	create_env_rays()
@@ -81,6 +84,7 @@ func _physics_process(delta: float) -> void:
 	_update_wall_contact_state()
 	_update_carried_box()
 
+# Ray setup
 func create_fov_rays() -> void:
 	fov_rays = _create_rays(7, 90.0, fov_ray_length, fov_mask, Color(1.0, 0.0, 0.0))
 
@@ -112,6 +116,7 @@ func _create_rays(num_rays: int, spread_deg: float, ray_length: float, mask: int
 
 	return created_rays
 
+# Box carry and placement
 func _toggle_grab() -> void:
 	if carried_box:
 		_release_box()
@@ -235,6 +240,7 @@ func _try_snap_to_block_slot(box: RigidBody3D) -> bool:
 	box.angular_velocity = Vector3.ZERO
 	return true
 
+# External control API
 func set_action(action_id: int) -> void:
 	current_action = clampi(action_id, ACTION_IDLE, ACTION_BACKWARD)
 	action_override_enabled = true
@@ -264,6 +270,7 @@ func _get_manual_action() -> int:
 		return ACTION_BACKWARD
 	return ACTION_IDLE
 
+# Observation helpers
 func get_observation() -> Array[float]:
 	var observation: Array[float] = []
 	observation.append(velocity.x / move_speed)
@@ -304,6 +311,7 @@ func _update_wall_contact_state() -> void:
 			touched_outer_wall = true
 			return
 
+# Environment queries and reset support
 func sees_hider() -> bool:
 	return _can_see_hider()
 

@@ -1,4 +1,6 @@
 extends CharacterBody3D
+
+# Movement, sensing, and interaction configuration
 @onready var head: Node3D = $head
 @export var move_speed := 3.0 #m/s
 @export var turn_speed := 2.5 #rad/s
@@ -31,6 +33,7 @@ var carried_box_mask := 0
 var current_random_action := ACTION_IDLE
 var random_action_frames_left := 0
 
+# Lifecycle and per-frame behavior
 func set_spotted(pos: Vector3) -> void:
 	spotted_by_seeker = true
 	seeker_pos = pos
@@ -79,6 +82,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_update_carried_box()
 
+# Ray setup
 func create_env_rays() -> void:
 	env_rays = _create_rays(16, 360.0, 5.0, env_mask, Color(1.0, 0.0, 0.0))
 
@@ -107,6 +111,7 @@ func _create_rays(num_rays: int, spread_deg: float, ray_length: float, mask: int
 
 	return created_rays
 
+# Box carry and placement
 func _toggle_grab() -> void:
 	if carried_box:
 		_release_box()
@@ -230,6 +235,7 @@ func _try_snap_to_block_slot(box: RigidBody3D) -> bool:
 	box.angular_velocity = Vector3.ZERO
 	return true
 
+# Reset and action selection
 func reset_agent_state(position: Vector3, yaw: float = 0.0) -> void:
 	if carried_box:
 		_release_box()
