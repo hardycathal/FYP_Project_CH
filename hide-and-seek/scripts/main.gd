@@ -28,6 +28,7 @@ const hiderScene := preload("res://scenes/hider.tscn")
 const seekerScene := preload("res://scenes/seeker.tscn")
 const SLOT_GROUP := "block_slot"
 const ACTION_IDLE := 0
+const MIN_SPAWN_SEPARATION := 8.0
 
 # Runtime state
 var player_cam: Camera3D
@@ -51,6 +52,7 @@ var hider_spawn_points := [
 	Vector3(4, 1, -7),
 	Vector3(0, 1, -4),
 ]
+var all_spawn_points: Array[Vector3] = []
 
 var layout_nodes: Array[Node] = []
 var box_nodes: Array[RigidBody3D] = []
@@ -266,11 +268,10 @@ func _reset_state() -> void:
 	episode_step = 0
 	episode_active = true
 
-	_select_seeker_spawn()
-	_select_hider_spawn()
+	_select_spawns()
 
 	if player:
-		player.reset_agent_state(seekerPos)
+		player.reset_agent_state(seekerPos, randf_range(0.0, TAU))
 		player.clear_action_override()
 	if hider:
 		hider.reset_agent_state(hiderPos, hiderYaw)
@@ -406,19 +407,22 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 func _apply_environment_config() -> void:
 	current_layout_index = 1
 	preparation_steps = 0
-	randomize_seeker_spawn = true
-	randomize_hider_spawn = true
-	seeker_spawn_points = [
-		#Vector3(-4, 1, 7),
-		Vector3(0, 1, 7),
-		#Vector3(4, 1, 7),
-		#Vector3(0, 1, 4),
-	]
-	hider_spawn_points = [
-		#Vector3(-4, 1, -7),
-		Vector3(0, 1, -7),
-		#Vector3(4, 1, -7),
-		#Vector3(0, 1, -4),
+	all_spawn_points = [
+		# Corners
+		Vector3( 6, 1,  6),
+		Vector3(-6, 1,  6),
+		Vector3( 6, 1, -6),
+		Vector3(-6, 1, -6),
+		# Edge midpoints
+		Vector3( 8, 1,  0),
+		Vector3(-8, 1,  0),
+		Vector3( 0, 1,  8),
+		Vector3( 0, 1, -8),
+		# Inner ring
+		Vector3( 4, 1,  4),
+		Vector3(-4, 1,  4),
+		Vector3( 4, 1, -4),
+		Vector3(-4, 1, -4),
 	]
 	if easy_training_mode:
 		arena_size = easy_arena_size
@@ -426,15 +430,18 @@ func _apply_environment_config() -> void:
 func _get_preparation_steps() -> int:
 	return easy_preparation_steps if easy_training_mode else preparation_steps
 
-func _select_hider_spawn() -> void:
-	if easy_training_mode or not randomize_hider_spawn or hider_spawn_points.is_empty():
+func _select_spawns() -> void:
+	if all_spawn_points.is_empty():
 		return
-	hiderPos = hider_spawn_points[randi() % hider_spawn_points.size()]
-
-func _select_seeker_spawn() -> void:
-	if easy_training_mode or not randomize_seeker_spawn or seeker_spawn_points.is_empty():
-		return
-	seekerPos = seeker_spawn_points[randi() % seeker_spawn_points.size()]
+	seekerPos = all_spawn_points[randi() % all_spawn_points.size()]
+	var candidates: Array[Vector3] = []
+	for p in all_spawn_points:
+		if p.distance_to(seekerPos) >= MIN_SPAWN_SEPARATION:
+			candidates.append(p)
+	if candidates.is_empty():
+		candidates = all_spawn_points
+	hiderPos = candidates[randi() % candidates.size()]
+	hiderYaw = randf_range(0.0, TAU)
 
 func _is_hider_caught() -> bool:
 	if player == null or hider == null:

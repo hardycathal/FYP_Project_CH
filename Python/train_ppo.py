@@ -95,6 +95,7 @@ def main() -> None:
             gamma=0.99,
             gae_lambda=0.95,
             ent_coef=0.01,
+            target_kl=0.01,
         )
 
     model.learn(
