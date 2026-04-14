@@ -6,10 +6,11 @@ extends Node3D
 @export var wall_thickness := 0.5
 @export var episode_length_steps := 180
 @export var preparation_steps := 30
-@export var visible_reward := 0.02
+@export var visible_reward := 0.005
 @export var catch_reward := 10.0
 @export var catch_distance := 1.5
 @export var step_penalty := 0.0
+@export var timeout_penalty := -1.0
 @export var outer_wall_penalty := -0.002
 @export var debug_step_logging := true
 @export var action_repeat := 5
@@ -322,6 +323,8 @@ func step(action: int) -> Dictionary:
 		done = caught_hider
 
 	if episode_step >= episode_length_steps:
+		if not caught_hider:
+			reward += timeout_penalty
 		done = true
 
 	if done:

@@ -30,7 +30,7 @@ MODEL_DIR = Path("Python") / "models"
 LOG_DIR = Path("Python") / "logs"
 CHECKPOINT_DIR = MODEL_DIR / "checkpoints"
 CHECKPOINT_FREQ = 10_000
-FINAL_MODEL_PATH = MODEL_DIR / "ppo_seeker.zip"
+FINAL_MODEL_PATH = MODEL_DIR / "base_model.zip"
 
 
 class GodotGymEnv(gym.Env):

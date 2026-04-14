@@ -31,5 +31,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 
 [node name="Sync" type="Node" parent="."]
 script = ExtResource("2_1natk")
-speed_up = 8.0
+speed_up = 10.0
 metadata/_custom_type_script = "uid://05g248s7oeye"
