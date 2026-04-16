@@ -8,7 +8,7 @@ extends Node3D
 @export var preparation_steps := 0
 @export var visible_reward := 0.005
 @export var catch_reward := 10.0
-@export var catch_distance := 1.5
+@export var catch_distance := 2.5
 @export var step_penalty := 0.0
 @export var timeout_penalty := -5.0
 @export var outer_wall_penalty := 0.0
@@ -87,15 +87,28 @@ var layouts = [
 	{
 		"name": "simple_room",
 		"inner_walls": [
-		
+			{ "pos": Vector2(-1, 0), "length": 5.0, "horizontal": true },
+			{ "pos": Vector2(5, 4), "length": 4.0, "horizontal": false },
 		],
-		"boxes": [],
+		"boxes": [
+			Vector3(-5, 0.5, -4),
+			Vector3(-6, 0.5, 4),
+		],
+		"block_slots": [],
+	},
+	{
+		"name": "empty_room",
+		"inner_walls": [
+		],
+		"boxes": [
+		],
 		"block_slots": [],
 	}
 ]
 
 # Scene lifecycle and debug controls
 func _ready() -> void:
+	_parse_cmdline_args()
 	_apply_environment_config()
 	_create_outer_walls()
 	load_layout(current_layout_index)
@@ -103,6 +116,14 @@ func _ready() -> void:
 	stage_cam.current = true
 	_reset_state()
 	_start_bridge_server()
+
+func _parse_cmdline_args() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--port="):
+			var port_str := arg.substr(7)
+			if port_str.is_valid_int():
+				bridge_port = int(port_str)
+				print("[BRIDGE] Port overridden to %d via command line" % bridge_port)
 
 func _process(_delta: float) -> void:
 	_poll_bridge_server()
@@ -222,6 +243,7 @@ func _spawn_player() -> void:
 		add_child(hider)
 
 	player.hider_ref = hider
+	hider.seeker_ref = player
 	player.position = seekerPos
 	hider.position = hiderPos
 	hider.rotation.y = hiderYaw
@@ -406,11 +428,13 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 # Training configuration helpers
 func _apply_environment_config() -> void:
 	current_layout_index = 1
-	preparation_steps = 0
+	preparation_steps = 40
+	catch_reward = 10.0
+	spawn_boxes = true
 	all_spawn_points = [
 		# Corners
 		Vector3( 6, 1,  6),
-		Vector3(-6, 1,  6),
+		Vector3(-4, 1,  7),
 		Vector3( 6, 1, -6),
 		Vector3(-6, 1, -6),
 		# Edge midpoints
@@ -419,10 +443,10 @@ func _apply_environment_config() -> void:
 		Vector3( 0, 1,  8),
 		Vector3( 0, 1, -8),
 		# Inner ring
-		Vector3( 4, 1,  4),
+		Vector3( 3, 1,  6),
 		Vector3(-4, 1,  4),
 		Vector3( 4, 1, -4),
-		Vector3(-4, 1, -4),
+		Vector3(-4, 1, -6),
 	]
 	if easy_training_mode:
 		arena_size = easy_arena_size
