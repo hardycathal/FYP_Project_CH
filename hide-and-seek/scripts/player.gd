@@ -86,7 +86,7 @@ func _physics_process(delta: float) -> void:
 
 # Ray setup
 func create_fov_rays() -> void:
-	fov_rays = _create_rays(15, 90.0, fov_ray_length, fov_mask, Color(1.0, 0.0, 0.0))
+	fov_rays = _create_rays(23, 135.0, fov_ray_length, fov_mask, Color(1.0, 0.0, 0.0))
 
 func create_env_rays() -> void:
 	env_rays = _create_rays(16, 360.0, env_ray_length, env_mask, Color(1.0, 0.5, 0.0))
@@ -279,11 +279,31 @@ func get_observation() -> Array[float]:
 	observation.append(sin(rotation.y))
 	observation.append(cos(rotation.y))
 	observation.append(1.0 if carried_box else 0.0)
+	observation.append(global_position.x / 10.0)
+	observation.append(global_position.z / 10.0)
 	observation.append_array(_get_ray_distance_observations(env_rays, env_ray_length))
 	observation.append_array(_get_ray_distance_observations(fov_rays, fov_ray_length))
 	observation.append(1.0 if sees_hider else 0.0)
 	observation.append_array(_get_visible_hider_motion_features(sees_hider))
+	observation.append_array(_get_visible_hider_position_features(sees_hider))
 	return observation
+
+func _get_visible_hider_position_features(sees_hider: bool) -> Array[float]:
+	if not sees_hider or hider_ref == null:
+		return [0.0, 0.0, 0.0, 0.0, 0.0]
+	var to_hider: Vector3 = hider_ref.global_position - global_position
+	var distance: float = to_hider.length()
+	if distance < 0.001:
+		return [0.0, 0.0, 0.0, 0.0, 0.0]
+	var forward := -transform.basis.z
+	var right := transform.basis.x
+	return [
+		to_hider.dot(forward) / distance,
+		to_hider.dot(right) / distance,
+		clampf(distance / fov_ray_length, 0.0, 1.0),
+		hider_ref.global_position.x / 10.0,
+		hider_ref.global_position.z / 10.0,
+	]
 
 func _get_ray_distance_observations(rays: Array[RayCast3D], max_length: float) -> Array[float]:
 	var distances: Array[float] = []

@@ -18,15 +18,19 @@ except ImportError as exc:
 try:
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import CheckpointCallback
+    from stable_baselines3.common.monitor import Monitor
+    from stable_baselines3.common.vec_env import SubprocVecEnv
 except ImportError as exc:
     raise SystemExit(
         "stable-baselines3 is required. Install with: pip install stable-baselines3"
     ) from exc
 
 
-OBS_SIZE = 42
+OBS_SIZE = 57
 NUM_ACTIONS = 5
-TOTAL_TIMESTEPS = 500_000
+TOTAL_TIMESTEPS = 1_000_000
+N_ENVS = 2          # number of parallel Godot instances
+BASE_PORT = 19000   # instances bind to BASE_PORT, BASE_PORT+1, ...
 MODEL_DIR = Path("Python") / "models"
 LOG_DIR = Path("Python") / "logs"
 CHECKPOINT_DIR = MODEL_DIR / "checkpoints"
@@ -65,15 +69,23 @@ class GodotGymEnv(gym.Env):
         super().close()
 
 
+def _make_env(port: int):
+    def _init() -> GodotGymEnv:
+        return Monitor(GodotGymEnv(port=port))
+    return _init
+
+
 def main() -> None:
     args = _parse_args()
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 
-    env = GodotGymEnv()
+    env = SubprocVecEnv([_make_env(BASE_PORT + i) for i in range(N_ENVS)])
+
+    # save_freq is per-env calls, so divide by N_ENVS to keep total-step frequency
     checkpoint_callback = CheckpointCallback(
-        save_freq=CHECKPOINT_FREQ,
+        save_freq=max(CHECKPOINT_FREQ // N_ENVS, 1),
         save_path=str(CHECKPOINT_DIR),
         name_prefix="ppo_seeker",
     )
@@ -90,8 +102,8 @@ def main() -> None:
             verbose=1,
             tensorboard_log=str(LOG_DIR),
             n_steps=2048,
-            batch_size=64,
-            learning_rate=3e-4,
+            batch_size=512,
+            learning_rate=1e-4,
             gamma=0.99,
             gae_lambda=0.95,
             ent_coef=0.01,
