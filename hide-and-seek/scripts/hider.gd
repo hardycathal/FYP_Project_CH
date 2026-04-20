@@ -36,6 +36,7 @@ var current_action := ACTION_IDLE
 var action_override_enabled := false
 var current_random_action := ACTION_IDLE
 var random_action_frames_left := 0
+@export var seeker_ref: CharacterBody3D
 
 # Lifecycle and per-frame behavior
 func set_spotted(_pos: Vector3) -> void:
@@ -79,7 +80,7 @@ func _physics_process(delta: float) -> void:
 
 # Ray setup
 func create_fov_rays() -> void:
-	fov_rays = _create_rays(15, 90.0, fov_ray_length, fov_mask, Color(0.0, 0.5, 1.0))
+	fov_rays = _create_rays(23, 135.0, fov_ray_length, fov_mask, Color(0.0, 0.5, 1.0))
 
 func create_env_rays() -> void:
 	env_rays = _create_rays(16, 360.0, env_ray_length, env_mask, Color(1.0, 0.0, 0.0))
@@ -290,15 +291,49 @@ func _get_manual_action() -> int:
 # Observation helpers
 func get_observation() -> Array[float]:
 	var observation: Array[float] = []
+	var sees_seeker := _can_see_seeker()
 	observation.append(velocity.x / move_speed)
 	observation.append(velocity.z / move_speed)
 	observation.append(sin(rotation.y))
 	observation.append(cos(rotation.y))
 	observation.append(1.0 if carried_box else 0.0)
+	observation.append(global_position.x / 10.0)
+	observation.append(global_position.z / 10.0)
 	observation.append_array(_get_ray_distance_observations(env_rays, env_ray_length))
 	observation.append_array(_get_ray_distance_observations(fov_rays, fov_ray_length))
-	observation.append(1.0 if _can_see_seeker() else 0.0)
+	observation.append(1.0 if sees_seeker else 0.0)
+	observation.append_array(_get_visible_seeker_motion_features(sees_seeker))
+	observation.append_array(_get_visible_seeker_position_features(sees_seeker))
 	return observation
+
+func _get_visible_seeker_motion_features(sees_seeker: bool) -> Array[float]:
+	if not sees_seeker or seeker_ref == null:
+		return [0.0, 0.0, 0.0, 0.0]
+	var seeker_velocity := seeker_ref.velocity
+	var seeker_heading := seeker_ref.global_transform.basis.z
+	return [
+		seeker_velocity.x / move_speed,
+		seeker_velocity.z / move_speed,
+		seeker_heading.x,
+		seeker_heading.z,
+	]
+
+func _get_visible_seeker_position_features(sees_seeker: bool) -> Array[float]:
+	if not sees_seeker or seeker_ref == null:
+		return [0.0, 0.0, 0.0, 0.0, 0.0]
+	var to_seeker: Vector3 = seeker_ref.global_position - global_position
+	var distance: float = to_seeker.length()
+	if distance < 0.001:
+		return [0.0, 0.0, 0.0, 0.0, 0.0]
+	var forward := -transform.basis.z
+	var right := transform.basis.x
+	return [
+		to_seeker.dot(forward) / distance,
+		to_seeker.dot(right) / distance,
+		clampf(distance / fov_ray_length, 0.0, 1.0),
+		seeker_ref.global_position.x / 10.0,
+		seeker_ref.global_position.z / 10.0,
+	]
 
 func _get_ray_distance_observations(rays: Array[RayCast3D], max_length: float) -> Array[float]:
 	var distances: Array[float] = []
