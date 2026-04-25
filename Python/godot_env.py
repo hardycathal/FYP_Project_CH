@@ -11,6 +11,7 @@ class GodotEnv:
         self.port = port
         self.timeout = timeout
         self.sock: socket.socket | None = None
+        self._recv_buffer = bytearray()
 
     def connect(self) -> None:
         if self.sock is not None:
@@ -21,20 +22,14 @@ class GodotEnv:
         if self.sock is not None:
             self.sock.close()
             self.sock = None
+        self._recv_buffer.clear()
 
     def reset(self) -> tuple[list[float], dict[str, Any]]:
         seeker_observation, _hider_observation, info = self.reset_both()
         return seeker_observation, info
 
     def reset_both(self) -> tuple[list[float], list[float], dict[str, Any]]:
-        self._send_command({"cmd": "reset"})
-        response = self._send_command(
-            {
-                "cmd": "step",
-                "seeker_action": self.ACTION_IDLE,
-                "hider_action": self.ACTION_IDLE,
-            }
-        )
+        response = self._send_command({"cmd": "reset"})
         result = self._unwrap_response(response)
         return (
             list(result["seeker_observation"]),
@@ -72,14 +67,7 @@ class GodotEnv:
         )
 
     def reset_raw(self) -> dict[str, Any]:
-        self._send_command({"cmd": "reset"})
-        return self._send_command(
-            {
-                "cmd": "step",
-                "seeker_action": self.ACTION_IDLE,
-                "hider_action": self.ACTION_IDLE,
-            }
-        )
+        return self._send_command({"cmd": "reset"})
 
     def step_raw(self, action: int) -> dict[str, Any]:
         return self._send_command(
@@ -108,15 +96,15 @@ class GodotEnv:
 
     def _recv_line(self) -> str:
         assert self.sock is not None
-        data = bytearray()
-        while True:
+        while b"\n" not in self._recv_buffer:
             chunk = self.sock.recv(4096)
             if not chunk:
                 raise ConnectionError("Socket closed by server")
-            data.extend(chunk)
-            newline = data.find(b"\n")
-            if newline != -1:
-                return data[:newline].decode("utf-8")
+            self._recv_buffer.extend(chunk)
+        newline = self._recv_buffer.find(b"\n")
+        line = self._recv_buffer[:newline].decode("utf-8")
+        self._recv_buffer = self._recv_buffer[newline + 1:]
+        return line
 
     def _unwrap_response(self, response: dict[str, Any]) -> dict[str, Any]:
         if not response.get("ok", False):

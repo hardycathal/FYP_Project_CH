@@ -11,7 +11,7 @@ hide-and-seek/export_presets.cfg
 hide-and-seek/export.cfg
 hide-and-seek/*.import
 hide-and-seek/*.tmp
-venv/
+
 # Godot editor cache / backups
 *.translation
 *.import
@@ -51,4 +51,11 @@ checkpoints/
 runs/
 logs/
 HowToFix.txt
-checkpoints1/
+Python/models/checkpoints1/
+Emergent Tool Use From Multi-Agent Autocurricula.pdf
+QUESTIONRESPONSE.txt
+Python/train_dual_ppo.py
+Python/models/stage1checkpoints/
+Poster/
+tb_env/
+venv/
