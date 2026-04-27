@@ -199,13 +199,13 @@ func _get_clamped_carry_position(origin: Vector3, desired_pos: Vector3) -> Vecto
 	query.collide_with_areas = false
 	query.exclude = [self, carried_box]
 
-	var basis := carried_box.global_transform.basis
+	var box_basis := carried_box.global_transform.basis
 	var steps := 24
 
 	for i in range(steps, -1, -1):
 		var t := float(i) / float(steps)
 		var candidate := origin.lerp(desired_pos, t)
-		query.transform = Transform3D(basis, candidate)
+		query.transform = Transform3D(box_basis, candidate)
 		var hits := get_world_3d().direct_space_state.intersect_shape(query, 1)
 		if hits.is_empty():
 			return candidate
