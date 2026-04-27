@@ -59,3 +59,7 @@ Python/models/stage1checkpoints/
 Poster/
 tb_env/
 venv/
+Python/logs_dual_hider/
+Python/logs_dual_seeker/
+Python/logs_hider/
+Python/models/
