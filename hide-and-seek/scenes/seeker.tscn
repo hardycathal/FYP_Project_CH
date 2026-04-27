@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://dunldi3frt223"]
+[gd_scene load_steps=7 format=3 uid="uid://dunldi3frt223"]
 
 [ext_resource type="Script" uid="uid://bajg7d42sp0fa" path="res://scripts/player.gd" id="1_sxpof"]
 [ext_resource type="Script" uid="uid://05g248s7oeye" path="res://addons/godot_rl_agents/sync.gd" id="2_1natk"]
+[ext_resource type="PackedScene" uid="uid://c7bgc52bbh2t1" path="res://scenes/rat_model.tscn" id="2_r41we"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_yflg5"]
 
@@ -22,7 +23,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_yflg5")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="CollisionShape3D"]
+visible = false
+layers = 0
 mesh = SubResource("CapsuleMesh_51c7v")
+
+[node name="RatModel" parent="CollisionShape3D" instance=ExtResource("2_r41we")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1, 0.5)
 
 [node name="head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
@@ -31,5 +37,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 
 [node name="Sync" type="Node" parent="."]
 script = ExtResource("2_1natk")
-speed_up = 10.0
 metadata/_custom_type_script = "uid://05g248s7oeye"

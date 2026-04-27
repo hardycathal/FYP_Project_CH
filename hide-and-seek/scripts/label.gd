@@ -1,11 +1,19 @@
 extends Label
 
-
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	text = """Controls:
+1 - Stage camera
+2 - Seeker camera
+3 - Hider camera
+L - Cycle level
+R - Reset episode
+FPS: ..."""
 
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
-	text = "FPS: %s" % [Engine.get_frames_per_second()]
+	text = """Controls:
+1 - Stage camera
+2 - Seeker camera
+3 - Hider camera
+L - Cycle level
+R - Reset episode
+FPS: %s""" % Engine.get_frames_per_second()

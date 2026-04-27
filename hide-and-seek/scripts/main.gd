@@ -32,6 +32,8 @@ const SLOT_GROUP := "block_slot"
 const ACTION_IDLE := 0
 const MIN_SPAWN_SEPARATION := 8.0
 
+const WALL_TEXTURE := preload("res://assets/textures/dev/grids/Orange/texture_05.png")
+
 # ─── Scene references ─────────────────────────────────────────────────────────
 
 var player_cam: Camera3D
@@ -184,9 +186,17 @@ func _create_wall(wall_name: String, pos: Vector3, size_x: float, size_z: float)
 	wall.name = "Wall_" + wall_name
 	wall.position = pos
 
-	var mesh_instance := MeshInstance3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = WALL_TEXTURE
+	mat.uv1_triplanar = true
+	mat.uv1_triplanar_sharpness = 1.0
+	mat.uv1_scale = Vector3(0.1, 0.1, 0.1)
+
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(size_x, wall_height, size_z)
+	mesh.material = mat
+
+	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = mesh
 	wall.add_child(mesh_instance)
 

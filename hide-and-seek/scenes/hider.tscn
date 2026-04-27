@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3 uid="uid://l2hku1y0jfc8"]
+[gd_scene load_steps=6 format=3 uid="uid://l2hku1y0jfc8"]
 
 [ext_resource type="Script" uid="uid://bgxhhohs7k2l5" path="res://scripts/hider.gd" id="1_6w4v8"]
+[ext_resource type="PackedScene" uid="uid://c7bgc52bbh2t1" path="res://scenes/rat_model.tscn" id="2_yflg5"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_yflg5"]
 
@@ -21,7 +22,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_yflg5")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="CollisionShape3D"]
+visible = false
 mesh = SubResource("CapsuleMesh_51c7v")
+
+[node name="RatModel" parent="CollisionShape3D" instance=ExtResource("2_yflg5")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -1, 0.5)
 
 [node name="head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
