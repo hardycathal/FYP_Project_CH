@@ -37,6 +37,13 @@ var action_override_enabled := false
 var current_random_action := ACTION_IDLE
 var random_action_frames_left := 0
 @export var seeker_ref: CharacterBody3D
+var anim_player: AnimationPlayer
+
+const ANIM_WALK := "mixamo_com"
+const ANIM_IDLE := "mixamo_com_002"
+
+# Visual layer used to hide the hider's own body from its first-person camera
+const VISUAL_LAYER_HIDER := 3  # bit 2
 
 # Lifecycle and per-frame behavior
 func set_spotted(_pos: Vector3) -> void:
@@ -45,6 +52,24 @@ func set_spotted(_pos: Vector3) -> void:
 func _ready() -> void:
 	create_fov_rays()
 	create_env_rays()
+	_setup_first_person_visibility()
+	anim_player = find_child("AnimationPlayer", true, false)
+	if anim_player:
+		anim_player.play(ANIM_IDLE)
+	var light := OmniLight3D.new()
+	light.light_color = Color(0.2, 0.4, 1.0)  # blue
+	light.light_energy = 10
+	light.omni_range = 3.0
+	light.position = Vector3(0, 1.0, 0)
+	add_child(light)
+
+func _setup_first_person_visibility() -> void:
+	# Put all hider body meshes on visual layer 3 only.
+	# The hider's own camera excludes layer 3, so it won't see its own body.
+	# The stage and seeker cameras keep all layers, so they still see it.
+	for mesh in find_children("*", "MeshInstance3D", true, false):
+		mesh.layers = (1 << 2)  # layer 3
+	camera_3d.cull_mask = camera_3d.cull_mask & ~(1 << 2)  # exclude layer 3
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("grab"):
@@ -77,6 +102,16 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 	_update_carried_box()
+	_update_animation(action)
+
+# Animation
+func _update_animation(action: int) -> void:
+	if anim_player == null:
+		return
+	var is_moving := action == ACTION_FORWARD or action == ACTION_BACKWARD
+	var target := ANIM_WALK if is_moving else ANIM_IDLE
+	if anim_player.current_animation != target:
+		anim_player.play(target)
 
 # Ray setup
 func create_fov_rays() -> void:

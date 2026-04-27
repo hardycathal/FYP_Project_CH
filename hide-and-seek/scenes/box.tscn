@@ -1,10 +1,26 @@
-[gd_scene load_steps=4 format=3 uid="uid://dn1qipoc7wsfx"]
+[gd_scene load_steps=10 format=3 uid="uid://dn1qipoc7wsfx"]
+
+[ext_resource type="Texture2D" uid="uid://b6twbbq4vct34" path="res://assets/textures/cheese/others_0009_color_2k.jpg" id="1_3inec"]
+[ext_resource type="Texture2D" uid="uid://ccfpegfqwf82p" path="res://assets/textures/cheese/others_0009_height_2k.png" id="2_brpd5"]
+[ext_resource type="Texture2D" uid="uid://cogl0xf8itnak" path="res://assets/textures/cheese/others_0009_normal_opengl_2k.png" id="2_ks2v0"]
+[ext_resource type="Texture2D" uid="uid://d1tmexpq1u8qb" path="res://assets/textures/cheese/others_0009_roughness_2k.jpg" id="3_c2ln5"]
+[ext_resource type="Texture2D" uid="uid://bq3re0kjcn3pn" path="res://assets/textures/cheese/others_0009_subsurface_2k.jpg" id="4_telwu"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_on5l8"]
 friction = 0.2
-bounce = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ks2v0"]
+albedo_texture = ExtResource("1_3inec")
+roughness_texture = ExtResource("3_c2ln5")
+normal_enabled = true
+normal_texture = ExtResource("2_ks2v0")
+heightmap_enabled = true
+heightmap_texture = ExtResource("2_brpd5")
+subsurf_scatter_enabled = true
+subsurf_scatter_texture = ExtResource("4_telwu")
 
 [sub_resource type="BoxMesh" id="BoxMesh_3inec"]
+material = SubResource("StandardMaterial3D_ks2v0")
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ks2v0"]
 
