@@ -1,12 +1,12 @@
 extends Node3D
 
-# Environment configuration
+# ─── Exports ──────────────────────────────────────────────────────────────────
+
 @export var arena_size := 20.0
 @export var wall_height := 3.0
 @export var wall_thickness := 0.5
 @export var episode_length_steps := 180
 @export var preparation_steps := 0
-@export var visible_reward := 0.005
 @export var catch_reward := 10.0
 @export var catch_distance := 2.5
 @export var step_penalty := 0.0
@@ -14,14 +14,16 @@ extends Node3D
 @export var outer_wall_penalty := 0.0
 @export var debug_step_logging := true
 @export var action_repeat := 5
-@export var bridge_enabled := true
 @export var bridge_port := 19000
+@export var bridge_enabled := true
 @export var spawn_boxes := false
 @export var easy_training_mode := false
 @export var easy_arena_size := 12.0
 @export var easy_preparation_steps := 0
 @export var randomize_hider_spawn := true
 @export var randomize_seeker_spawn := true
+
+# ─── Constants ────────────────────────────────────────────────────────────────
 
 const boxScene := preload("res://scenes/box.tscn")
 const hiderScene := preload("res://scenes/hider.tscn")
@@ -30,16 +32,21 @@ const SLOT_GROUP := "block_slot"
 const ACTION_IDLE := 0
 const MIN_SPAWN_SEPARATION := 8.0
 
-# Runtime state
+# ─── Scene references ─────────────────────────────────────────────────────────
+
 var player_cam: Camera3D
 var hider_cam: Camera3D
 @onready var stage_cam: Camera3D = $stage/stageCam
 
+var player
 var hider
+
+# ─── Spawn positions ──────────────────────────────────────────────────────────
+
 var seekerPos := Vector3(0, 1, 8)
 var hiderPos := Vector3(0, 1, -8)
 var hiderYaw := PI
-var player
+
 var seeker_spawn_points := [
 	Vector3(-4, 1, 7),
 	Vector3(0, 1, 7),
@@ -54,17 +61,11 @@ var hider_spawn_points := [
 ]
 var all_spawn_points: Array[Vector3] = []
 
+# ─── Arena state ──────────────────────────────────────────────────────────────
+
 var layout_nodes: Array[Node] = []
 var box_nodes: Array[RigidBody3D] = []
 var box_spawn_positions: Array[Vector3] = []
-
-var episode_step := 0
-var episode_active := false
-var previous_seeker_hider_distance := 0.0
-var bridge_server := TCPServer.new()
-var bridge_client: StreamPeerTCP
-var bridge_buffer := ""
-var bridge_busy := false
 var current_layout_index := 2
 
 var layouts = [
@@ -98,45 +99,56 @@ var layouts = [
 	},
 	{
 		"name": "empty_room",
-		"inner_walls": [
-		],
-		"boxes": [
-		],
+		"inner_walls": [],
+		"boxes": [],
 		"block_slots": [],
 	}
 ]
 
-# Scene lifecycle and debug controls
+# ─── Episode state ────────────────────────────────────────────────────────────
+
+var episode_step := 0
+var episode_active := false
+var previous_seeker_hider_distance := 0.0
+
+# ─── Bridge ───────────────────────────────────────────────────────────────────
+
+var bridge: Node
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Scene lifecycle
+# ═════════════════════════════════════════════════════════════════════════════
+
 func _ready() -> void:
 	_parse_cmdline_args()
 	_apply_environment_config()
 	_create_outer_walls()
 	load_layout(current_layout_index)
-	_spawn_player()
+	_spawn_agents()
 	stage_cam.current = true
 	_reset_state()
-	_start_bridge_server()
-
-func _parse_cmdline_args() -> void:
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--port="):
-			var port_str := arg.substr(7)
-			if port_str.is_valid_int():
-				bridge_port = int(port_str)
-				print("[BRIDGE] Port overridden to %d via command line" % bridge_port)
+	_start_bridge()
 
 func _process(_delta: float) -> void:
-	_poll_bridge_server()
+	bridge.poll()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Input
+# ═════════════════════════════════════════════════════════════════════════════
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"):
 		_reset_state()
+
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_L:
 		_cycle_layout()
+
 	if event.is_action_pressed("debug_reset"):
 		_run_debug_reset()
+
 	if event.is_action_pressed("debug_step"):
 		_run_debug_step()
+
 	if event.is_action_pressed("hider_cam"):
 		stage_cam.current = false
 		player_cam.current = false
@@ -152,61 +164,20 @@ func _input(event: InputEvent) -> void:
 		player_cam.current = false
 		hider_cam.current = false
 
-# Arena and layout construction
-func load_layout(index: int) -> void:
-	current_layout_index = posmod(index, layouts.size())
-	for node in layout_nodes:
-		if is_instance_valid(node):
-			node.queue_free()
-	layout_nodes.clear()
-	box_nodes.clear()
-	box_spawn_positions.clear()
-
-	var layout = layouts[current_layout_index]
-	var box_list = layout["boxes"]
-	var block_slots = layout.get("block_slots", [])
-
-	if not spawn_boxes:
-		box_list = []
-		block_slots = []
-
-	if easy_training_mode:
-		box_list = []
-		block_slots = []
-
-	for w in layout["inner_walls"]:
-		var pos2: Vector2 = w["pos"]
-		var length: float = w["length"]
-		var horizontal: bool = w["horizontal"]
-		var pos3 := Vector3(pos2.x, wall_height / 2.0, pos2.y)
-		_create_inner_wall(pos3, length, horizontal)
-
-	for i in range(box_list.size()):
-		_create_box(box_list[i], i + 1)
-
-	for slot_data in block_slots:
-		_create_block_slot(slot_data["pos"], slot_data["size"], slot_data["yaw"])
-
-func _cycle_layout() -> void:
-	load_layout(current_layout_index + 1)
-	_reset_state()
+# ═════════════════════════════════════════════════════════════════════════════
+# Arena construction
+# ═════════════════════════════════════════════════════════════════════════════
 
 func _create_outer_walls() -> void:
 	var half := arena_size / 2.0
 	var walls_data = [
 		["North", Vector3(0, wall_height / 2, -half), arena_size, wall_thickness],
-		["South", Vector3(0, wall_height / 2, half), arena_size, wall_thickness],
-		["East", Vector3(half, wall_height / 2, 0), wall_thickness, arena_size],
-		["West", Vector3(-half, wall_height / 2, 0), wall_thickness, arena_size],
+		["South", Vector3(0, wall_height / 2,  half), arena_size, wall_thickness],
+		["East",  Vector3( half, wall_height / 2, 0), wall_thickness, arena_size],
+		["West",  Vector3(-half, wall_height / 2, 0), wall_thickness, arena_size],
 	]
-
 	for data in walls_data:
-		var wall_name = data[0]
-		var pos = data[1]
-		var sx = data[2]
-		var sz = data[3]
-		var wall = _create_wall(wall_name, pos, sx, sz)
-		add_child(wall)
+		add_child(_create_wall(data[0], data[1], data[2], data[3]))
 
 func _create_wall(wall_name: String, pos: Vector3, size_x: float, size_z: float) -> StaticBody3D:
 	var wall := StaticBody3D.new()
@@ -233,22 +204,6 @@ func _create_inner_wall(pos: Vector3, length: float, horizontal: bool) -> void:
 	var wall = _create_wall("Inner", pos, size_x, size_z)
 	add_child(wall)
 	layout_nodes.append(wall)
-
-func _spawn_player() -> void:
-	if player == null:
-		player = seekerScene.instantiate()
-		add_child(player)
-	if hider == null:
-		hider = hiderScene.instantiate()
-		add_child(hider)
-
-	player.hider_ref = hider
-	hider.seeker_ref = player
-	player.position = seekerPos
-	hider.position = hiderPos
-	hider.rotation.y = hiderYaw
-	hider_cam = hider.get_node("head/Camera3D")
-	player_cam = player.get_node("head/Camera3D")
 
 func _create_box(pos: Vector3, idx: int) -> void:
 	var box := boxScene.instantiate()
@@ -285,7 +240,66 @@ func _create_block_slot(pos: Vector3, size: Vector3, yaw: float) -> void:
 	add_child(slot)
 	layout_nodes.append(slot)
 
-# Environment reset and stepping
+# ═════════════════════════════════════════════════════════════════════════════
+# Layout management
+# ═════════════════════════════════════════════════════════════════════════════
+
+func load_layout(index: int) -> void:
+	current_layout_index = posmod(index, layouts.size())
+
+	for node in layout_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	layout_nodes.clear()
+	box_nodes.clear()
+	box_spawn_positions.clear()
+
+	var layout = layouts[current_layout_index]
+	var box_list = layout["boxes"]
+	var block_slots = layout.get("block_slots", [])
+
+	if not spawn_boxes or easy_training_mode:
+		box_list = []
+		block_slots = []
+
+	for w in layout["inner_walls"]:
+		var pos3 := Vector3(w["pos"].x, wall_height / 2.0, w["pos"].y)
+		_create_inner_wall(pos3, w["length"], w["horizontal"])
+
+	for i in range(box_list.size()):
+		_create_box(box_list[i], i + 1)
+
+	for slot_data in block_slots:
+		_create_block_slot(slot_data["pos"], slot_data["size"], slot_data["yaw"])
+
+func _cycle_layout() -> void:
+	load_layout(current_layout_index + 1)
+	_reset_state()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Agent spawning
+# ═════════════════════════════════════════════════════════════════════════════
+
+func _spawn_agents() -> void:
+	if player == null:
+		player = seekerScene.instantiate()
+		add_child(player)
+	if hider == null:
+		hider = hiderScene.instantiate()
+		add_child(hider)
+
+	player.hider_ref = hider
+	hider.seeker_ref = player
+	player.position = seekerPos
+	hider.position = hiderPos
+	hider.rotation.y = hiderYaw
+	hider_cam = hider.get_node("head/Camera3D")
+	player_cam = player.get_node("head/Camera3D")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Episode logic
+# ═════════════════════════════════════════════════════════════════════════════
+
 func _reset_state() -> void:
 	episode_step = 0
 	episode_active = true
@@ -322,10 +336,7 @@ func reset_episode() -> Dictionary:
 		"seeker_reward": 0.0,
 		"hider_reward": 0.0,
 		"done": false,
-		"info": {
-			"episode_step": episode_step,
-			"in_preparation": true,
-		},
+		"info": { "episode_step": episode_step, "in_preparation": true },
 	}
 
 func reset_episode_async() -> Dictionary:
@@ -347,10 +358,7 @@ func reset_episode_async() -> Dictionary:
 		"seeker_reward": 0.0,
 		"hider_reward": 0.0,
 		"done": false,
-		"info": {
-			"episode_step": episode_step,
-			"in_preparation": true,
-		},
+		"info": { "episode_step": episode_step, "in_preparation": true },
 	}
 
 func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
@@ -358,10 +366,7 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 		_reset_state()
 
 	if player:
-		if episode_step < _get_preparation_steps():
-			player.set_action(ACTION_IDLE)
-		else:
-			player.set_action(seeker_action)
+		player.set_action(ACTION_IDLE if episode_step < _get_preparation_steps() else seeker_action)
 	if hider:
 		hider.set_action(hider_action)
 
@@ -375,7 +380,7 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 
 	episode_step += 1
 
-	var in_preparation: bool = episode_step <= _get_preparation_steps()
+	var in_preparation := episode_step <= _get_preparation_steps()
 	var sees_hider: bool = player.sees_hider() if player != null else false
 	var sees_seeker: bool = hider.sees_seeker() if hider != null else false
 	var caught_hider: bool = _is_hider_caught()
@@ -425,7 +430,10 @@ func step(seeker_action: int, hider_action: int = ACTION_IDLE) -> Dictionary:
 		},
 	}
 
-# Training configuration helpers
+# ═════════════════════════════════════════════════════════════════════════════
+# Helpers
+# ═════════════════════════════════════════════════════════════════════════════
+
 func _apply_environment_config() -> void:
 	current_layout_index = 1
 	preparation_steps = 40
@@ -433,20 +441,14 @@ func _apply_environment_config() -> void:
 	spawn_boxes = true
 	all_spawn_points = [
 		# Corners
-		Vector3( 6, 1,  6),
-		Vector3(-4, 1,  7),
-		Vector3( 6, 1, -6),
-		Vector3(-6, 1, -6),
+		Vector3( 6, 1,  6), Vector3(-4, 1,  7),
+		Vector3( 6, 1, -6), Vector3(-6, 1, -6),
 		# Edge midpoints
-		Vector3( 8, 1,  0),
-		Vector3(-8, 1,  0),
-		Vector3( 0, 1,  8),
-		Vector3( 0, 1, -8),
+		Vector3( 8, 1,  0), Vector3(-8, 1,  0),
+		Vector3( 0, 1,  8), Vector3( 0, 1, -8),
 		# Inner ring
-		Vector3( 3, 1,  6),
-		Vector3(-4, 1,  4),
-		Vector3( 4, 1, -4),
-		Vector3(-4, 1, -6),
+		Vector3( 3, 1,  6), Vector3(-4, 1,  4),
+		Vector3( 4, 1, -4), Vector3(-4, 1, -6),
 	]
 	if easy_training_mode:
 		arena_size = easy_arena_size
@@ -482,97 +484,30 @@ func _augment_observation(obs: Array) -> Array:
 	augmented.append(float(episode_step) / float(episode_length_steps))
 	return augmented
 
-# Python bridge
-func _start_bridge_server() -> void:
-	if not bridge_enabled:
-		return
-	var err := bridge_server.listen(bridge_port)
-	if err == OK:
-		print("[BRIDGE] Listening on port %d" % bridge_port)
-	else:
-		push_warning("Bridge server failed to listen on port %d (error %d)" % [bridge_port, err])
+func _parse_cmdline_args() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--port="):
+			var port_str := arg.substr(7)
+			if port_str.is_valid_int():
+				bridge_port = int(port_str)
+				print("[BRIDGE] Port overridden to %d via command line" % bridge_port)
 
-func _poll_bridge_server() -> void:
-	if not bridge_enabled or not bridge_server.is_listening():
-		return
+# ═════════════════════════════════════════════════════════════════════════════
+# Bridge setup
+# ═════════════════════════════════════════════════════════════════════════════
 
-	if bridge_client == null and bridge_server.is_connection_available():
-		bridge_client = bridge_server.take_connection()
-		bridge_buffer = ""
-		bridge_busy = false
-		print("[BRIDGE] Client connected")
+func _start_bridge() -> void:
+	bridge = load("res://scripts/bridge.gd").new()
+	bridge.bridge_port = bridge_port
+	bridge.bridge_enabled = bridge_enabled
+	bridge.init(self)
+	add_child(bridge)
+	bridge.start()
 
-	if bridge_client == null:
-		return
+# ═════════════════════════════════════════════════════════════════════════════
+# Debug controls (in-editor testing)
+# ═════════════════════════════════════════════════════════════════════════════
 
-	bridge_client.poll()
-	var status := bridge_client.get_status()
-	if status == StreamPeerTCP.STATUS_NONE or status == StreamPeerTCP.STATUS_ERROR:
-		print("[BRIDGE] Client disconnected")
-		bridge_client = null
-		bridge_buffer = ""
-		bridge_busy = false
-		return
-
-	if bridge_busy:
-		return
-
-	var available := bridge_client.get_available_bytes()
-	if available <= 0:
-		return
-
-	bridge_buffer += bridge_client.get_utf8_string(available)
-	while bridge_buffer.contains("\n") and not bridge_busy:
-		var newline_index := bridge_buffer.find("\n")
-		var raw_line := bridge_buffer.substr(0, newline_index).strip_edges()
-		bridge_buffer = bridge_buffer.substr(newline_index + 1)
-		if raw_line.is_empty():
-			continue
-		_handle_bridge_line(raw_line)
-
-func _handle_bridge_line(raw_line: String) -> void:
-	var json := JSON.new()
-	var parse_err := json.parse(raw_line)
-	if parse_err != OK:
-		_send_bridge_response({"ok": false, "error": "invalid_json"})
-		return
-
-	var message = json.data
-	if typeof(message) != TYPE_DICTIONARY:
-		_send_bridge_response({"ok": false, "error": "invalid_message"})
-		return
-
-	var command := str(message.get("cmd", ""))
-	match command:
-		"reset":
-			bridge_busy = true
-			_handle_bridge_reset()
-		"step":
-			var seeker_action := int(message.get("seeker_action", message.get("action", ACTION_IDLE)))
-			var hider_action := int(message.get("hider_action", ACTION_IDLE))
-			bridge_busy = true
-			_handle_bridge_step(seeker_action, hider_action)
-		_:
-			_send_bridge_response({"ok": false, "error": "unknown_command"})
-
-func _handle_bridge_step(seeker_action: int, hider_action: int) -> void:
-	var result = await step(seeker_action, hider_action)
-	_send_bridge_response({"ok": true, "result": result})
-	bridge_busy = false
-
-func _handle_bridge_reset() -> void:
-	var result = await reset_episode_async()
-	_send_bridge_response({"ok": true, "result": result})
-	bridge_busy = false
-
-func _send_bridge_response(payload: Dictionary) -> void:
-	if bridge_client == null:
-		return
-	bridge_client.poll()
-	var line := JSON.stringify(payload) + "\n"
-	bridge_client.put_data(line.to_utf8_buffer())
-
-# In-editor environment testing
 func _run_debug_step() -> void:
 	var seeker_action := randi_range(0, 4)
 	var hider_action := randi_range(0, 4)
