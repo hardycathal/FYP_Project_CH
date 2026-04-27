@@ -32,7 +32,7 @@ const SLOT_GROUP := "block_slot"
 const ACTION_IDLE := 0
 const MIN_SPAWN_SEPARATION := 8.0
 
-const WALL_TEXTURE := preload("res://assets/textures/dev/grids/Orange/texture_05.png")
+const WALL_TEXTURE := preload("res://assets/textures/dev/grids/Purple/texture_09.png")
 
 # ─── Scene references ─────────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ func _create_wall(wall_name: String, pos: Vector3, size_x: float, size_z: float)
 	mat.albedo_texture = WALL_TEXTURE
 	mat.uv1_triplanar = true
 	mat.uv1_triplanar_sharpness = 1.0
-	mat.uv1_scale = Vector3(0.1, 0.1, 0.1)
+	mat.uv1_scale = Vector3(1, 1, 1)
 
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(size_x, wall_height, size_z)
