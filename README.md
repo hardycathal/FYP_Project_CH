@@ -75,8 +75,13 @@ FYP_Project_CH/
 │   ├── train_seeker_ppo.py     # Seeker curriculum training
 │   ├── train_hider_ppo.py      # Hider training vs frozen seeker
 │   ├── train_dual_ppo.py       # Dual self-play training
+|   ├── watch_model.py          # Watch a trained agent
+|   ├── watch_dual.py           # Watch both agents
+|   ├── random_client.py        # Test script, sends 20 random actions
+|   ├── rollout_random.py       # Test Script, runs 10 eps with random actions.
 │   ├── logs_dual_seeker/       # TensorBoard logs — seeker
 │   └── logs_dual_hider/        # TensorBoard logs — hider
+|   └── tests/                  # Test scripts
 │
 ├── Models/                 # Saved .zip model checkpoints
 ├── Presentation/           # Slide deck
@@ -107,7 +112,7 @@ pip install stable-baselines3 gymnasium numpy torch tqdm rich tensorboard
 
 **Seeker curriculum:**
 ```bash
-python Python/train_seeker_ppo.py
+python Python/train_ppo.py
 ```
 
 **Hider (requires a trained seeker checkpoint):**
@@ -129,7 +134,8 @@ tensorboard --logdir Python/logs_dual_seeker
 ### Running a Trained Agent
 
 ```bash
-python Python/run_agent.py --model Models/seeker_final.zip
+python Python/watch_model.py --model Models/seeker_final.zip
+python Python/watch_dual.py
 ```
 
 ## Tech Stack
