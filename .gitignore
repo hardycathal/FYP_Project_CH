@@ -1,9 +1,7 @@
 # ====================================================
 # GODOT / PYTHON PROJECT - .gitignore
+README.md
 # ====================================================
-*.md
-multi-agent-emergence-unity-main/
-requirements.txt
 # ---------- GODOT ----------
 hide-and-seek/.godot/
 hide-and-seek/.import/
@@ -46,20 +44,9 @@ desktop.ini
 
 # ---------- MISC ----------
 # Temporary data, model outputs, etc.
-outputs/
 checkpoints/
-runs/
 logs/
-HowToFix.txt
-Python/models/checkpoints1/
-Emergent Tool Use From Multi-Agent Autocurricula.pdf
-QUESTIONRESPONSE.txt
-Python/train_dual_ppo.py
-Python/models/stage1checkpoints/
-Poster/
-tb_env/
+logs_dual_hider/
+logs_dual_seeker/
+logs_hider/
 venv/
-Python/logs_dual_hider/
-Python/logs_dual_seeker/
-Python/logs_hider/
-Python/models/

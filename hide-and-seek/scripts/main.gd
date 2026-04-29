@@ -49,18 +49,6 @@ var seekerPos := Vector3(0, 1, 8)
 var hiderPos := Vector3(0, 1, -8)
 var hiderYaw := PI
 
-var seeker_spawn_points := [
-	Vector3(-4, 1, 7),
-	Vector3(0, 1, 7),
-	Vector3(4, 1, 7),
-	Vector3(0, 1, 4),
-]
-var hider_spawn_points := [
-	Vector3(-4, 1, -7),
-	Vector3(0, 1, -7),
-	Vector3(4, 1, -7),
-	Vector3(0, 1, -4),
-]
 var all_spawn_points: Array[Vector3] = []
 
 # ─── Arena state ──────────────────────────────────────────────────────────────

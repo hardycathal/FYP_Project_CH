@@ -13,8 +13,8 @@ except ImportError as exc:
     ) from exc
 
 
-DEFAULT_SEEKER_MODEL_PATH = Path("Python") / "models" / "base_model.zip"
-DEFAULT_HIDER_MODEL_PATH = Path("Python") / "models" / "HiderTraining" / "hider_ppo.zip"
+DEFAULT_SEEKER_MODEL_PATH = Path("models") / "DualTraining" / "ppo_seeker.zip"
+DEFAULT_HIDER_MODEL_PATH = Path("models") / "DualTraining" / "ppo_hider.zip"
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--host", default="127.0.0.1", help="Godot bridge host")
     parser.add_argument("--port", type=int, default=19000, help="Godot bridge port")
-    parser.add_argument("--episodes", type=int, default=10, help="Number of episodes to run")
+    parser.add_argument("--episodes", type=int, default=100, help="Number of episodes to run")
     parser.add_argument(
         "--max-steps",
         type=int,
